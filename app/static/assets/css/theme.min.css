@@ -5908,7 +5908,7 @@ fieldset:disabled .btn {
 .nav-link {
     background: none;
     border: 0;
-    color: var(--fc-nav-link-color);
+    color: #000;
     display: block;
     font-size: var(--fc-nav-link-font-size);
     font-weight: var(--fc-nav-link-font-weight);
@@ -9695,7 +9695,7 @@ fieldset:disabled .btn {
 
 .text-bg-primary {
     background-color: RGBA(var(--fc-primary-rgb), var(--fc-bg-opacity, 1)) !important;
-    color: #fff !important
+    color: #000!important
 }
 
 .text-bg-secondary {
@@ -13542,7 +13542,7 @@ fieldset:disabled .btn {
 
 .text-muted {
     --fc-text-opacity: 1;
-    color: var(--fc-secondary-color) !important
+    color: var(--fc-primary-color) !important
 }
 
 .text-black-50 {
@@ -13840,7 +13840,7 @@ fieldset:disabled .btn {
 
 .bg-primary {
     --fc-bg-opacity: 1;
-    background-color: #0aad0a !important
+    background-color: #ffca2c !important
 }
 
 .bg-secondary {
