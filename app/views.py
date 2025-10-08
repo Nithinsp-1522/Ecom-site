@@ -35,7 +35,7 @@ def payment_method(request):
     return render(request, 'user/account-payment-method.html')
 
 def rewards(request):
-    return render(request, 'user/account-notification.html')
+    return render(request, 'user/account-Rewards.html')
 
 
 
