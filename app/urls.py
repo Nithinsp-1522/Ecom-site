@@ -21,4 +21,9 @@ urlpatterns = [
 
     # Admin URLs can be added here
     path('admin-home/', views.admin_home, name='admin-home'),
+    path('adminlogin/', views.admin_login, name='adminlogin'),
+    path('adminlogout/', views.adminlogout, name='adminlogout'),
+    path('categories/', views.categories, name='categories'),
+    path('add-category/', views.add_category, name='add-category'),
+    path('add-subcategory/', views.add_subcategory, name='add-subcategory'),
 ]

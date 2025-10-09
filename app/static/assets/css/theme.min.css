@@ -6925,7 +6925,7 @@ fieldset:disabled .btn {
 
 .breadcrumb-item+.breadcrumb-item:before {
     color: var(--fc-breadcrumb-divider-color);
-    content: var(--fc-breadcrumb-divider, "../../index-2.html");
+    content: var(--fc-breadcrumb-divider, "→");
     float: left;
     padding-right: var(--fc-breadcrumb-item-padding-x)
 }

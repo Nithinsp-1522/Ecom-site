@@ -35,7 +35,7 @@ def payment_method(request):
     return render(request, 'user/account-payment-method.html')
 
 def rewards(request):
-    return render(request, 'user/account-notification.html')
+    return render(request, 'user/account-Rewards.html')
 
 
 
@@ -45,3 +45,18 @@ def rewards(request):
 # Admin views
 def admin_home(request):
     return render(request, 'superadmin/adminhome.html')
+
+def admin_login(request):
+    return render(request, 'superadmin/adminsignin.html')
+
+def adminlogout(request):
+    return render(request, 'index.html')
+
+def categories(request):
+    return render(request, 'superadmin/categories.html')
+
+def add_category(request):
+    return render(request, 'superadmin/add-category.html')
+
+def add_subcategory(request):   
+    return render(request, 'superadmin/add- Subcategory.html')

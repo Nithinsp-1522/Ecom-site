@@ -1,0 +1,100 @@
+{% extends 'superadmin/adminbase.html' %}
+{% load static %}
+{% block title %} Add Sub-Category {% endblock %}
+{% block content %}
+         <!-- main -->
+         <main class="main-content-wrapper">
+            <!-- container -->
+            <div class="container">
+               <!-- row -->
+               <div class="row mb-8">
+                  <div class="col-md-12">
+                     <div class="d-md-flex justify-content-between align-items-center">
+                        <!-- page header -->
+                        <div>
+                           <h2>Add Sub Category</h2>
+                           <!-- breacrumb -->
+                           <nav aria-label="breadcrumb">
+                              <ol class="breadcrumb mb-0">
+                                 <li class="breadcrumb-item"><a href="{% url 'admin-home' %}" class="text-inherit">Dashboard</a></li>
+                                 <li class="breadcrumb-item"><a href="{% url 'categories' %}" class="text-inherit">Categories</a></li>
+                                 <li class="breadcrumb-item active" aria-current="page">Add Sub Category</li>
+								 
+                              </ol>
+                           </nav>
+                        </div>
+                        <div>
+                           <a href="{% url 'admin-home' %}" class="btn btn-light">Back to Categories</a>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div class="row">
+                  <div class="col-lg-12 col-12">
+                     <!-- card -->
+                     <div class="card mb-6 shadow border-0">
+                        <!-- card body -->
+                        <div class="card-body p-6">
+                           
+                           <h4 class="mb-4 h5 mt-5"> Sub Category Information</h4>
+							<form action="">
+                           <div class="row">
+                              <!-- input -->
+                              <div class="mb-3 col-lg-6">
+                                 <label class="form-label">Sub Category Name</label>
+                                 <input type="text" class="form-control" placeholder="Category Name" required />
+                              </div>
+                              <!-- input -->
+                              <div class="mb-3 col-lg-6">
+                                 <label class="form-label">Slug</label>
+                                 <input type="text" class="form-control" placeholder="Slug" required />
+                              </div>
+                              <!-- input -->
+                              <div class="mb-3 col-lg-6">
+                                 <label class="form-label">Parent Category</label>
+                                 <select class="form-select">
+                                    <option selected>Category Name</option>
+                                    <option value="Dairy, Bread & Eggs">Dairy, Bread & Eggs</option>
+                                    <option value="Snacks & Munchies">Snacks & Munchies</option>
+                                    <option value="Fruits & Vegetables">Fruits & Vegetables</option>
+                                 </select>
+                              </div>
+                              
+
+                              <div></div>
+                              <!-- input -->
+                              <div class="mb-3 col-lg-12">
+                                 <label class="form-label">Descriptions</label>
+
+                                 <div class="py-8" id="editor"></div>
+                              </div>
+
+                              <!-- input -->
+                              
+                              <div class="mb-3 col-lg-12 mt-5">
+                                 <h4 class="mb-4 h5">Meta Data</h4>
+                                 <!-- input -->
+                                 <div class="mb-3">
+                                    <label class="form-label">Meta Title</label>
+                                    <input type="text" class="form-control" placeholder="Title" />
+                                 </div>
+
+                                 <!-- input -->
+                                 <div class="mb-3">
+                                    <label class="form-label">Meta Description</label>
+                                    <textarea class="form-control" rows="3" placeholder="Meta Description"></textarea>
+                                 </div>
+                              </div>
+                              <div class="col-lg-12">
+                                 <input type="submit" class="btn btn-primary" value="Create Sub-Category">
+                                 <input type="reset" class="btn btn-secondary ms-2">
+                              </div>
+                           </div>
+						   </form>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </main>
+		 {% endblock %}
