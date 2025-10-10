@@ -26,4 +26,7 @@ urlpatterns = [
     path('categories/', views.categories, name='categories'),
     path('add-category/', views.add_category, name='add-category'),
     path('add-subcategory/', views.add_subcategory, name='add-subcategory'),
+    path('products/', views.products, name='products'),
+    path('add-productcategory/', views.add_productcategory, name='add-productcategory'),
+    path('add-products/', views.add_products, name='add-products'),
 ]

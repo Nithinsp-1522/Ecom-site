@@ -235,7 +235,7 @@
 								<div id="navCategoriesProducts" class="collapse " data-bs-parent="#sideNavbar">
 									<ul class="nav flex-column">
 										<li class="nav-item">
-											<a class="nav-link " href="order-list.html">Add Products</a>
+											<a class="nav-link " href="{% url 'products' %}">Add Products</a>
 										</li>
 										<!-- Nav item -->
 										<li class="nav-item">
@@ -341,7 +341,7 @@
 								<div id="navProducts" class="collapse " data-bs-parent="#sideNavbar">
 									<ul class="nav flex-column">
 										<li class="nav-item">
-											<a class="nav-link " href="order-list.html">Add Products</a>
+											<a class="nav-link " href="{% url 'products' %}">Add Products</a>
 										</li>
 										<!-- Nav item -->
 										<li class="nav-item">
@@ -412,8 +412,7 @@
 	<script src="{% static 'assets/libs/quill/dist/quill.min.js' %}"></script>
     <script src="{% static 'assets/js/vendors/editor.js' %}"></script>
     <script src="{% static 'assets/libs/dropzone/dist/min/dropzone.min.js' %}"></script>
+	<script src="{% static 'assets/js/vendors/dropzone.js' %}"></script>
 </body>
-
-
 
 </html>

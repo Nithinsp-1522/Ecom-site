@@ -60,3 +60,12 @@ def add_category(request):
 
 def add_subcategory(request):   
     return render(request, 'superadmin/add- Subcategory.html')
+
+def products(request):
+    return render(request, 'superadmin/products.html')
+
+def add_productcategory(request):
+    return render(request, 'superadmin/Addproductscat.html')
+
+def add_products(request):
+    return render(request, 'superadmin/add-product.html')
