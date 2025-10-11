@@ -82,14 +82,30 @@
                   <div class="d-flex align-items-center lh-1">
                      <div class="list-inline me-4">
                         <div class="list-inline-item">
-                           <a href="#!" class="text-muted" data-bs-toggle="modal" data-bs-target="#userModal">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                 stroke-linejoin="round" class="feather feather-user">
-                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                 <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
+                           {% if request.session.user_name %}
+                           <!-- ✅ Responsive Logged-in User Display -->
+                           <div class="d-flex align-items-center flex-wrap text-nowrap">
+                              <i class="bi bi-person-circle fs-5 text-primary me-1"></i>
+                              <span class="fw-semibold text-dark me-2">{{ request.session.user_name }}</span>
+                              <a href="{% url 'userlogout' %}"
+                                 class="text-danger small text-decoration-none d-none d-sm-inline ms-2">
+                                 Logout
+                              </a>
+                              <!-- Mobile logout icon -->
+                              <a href="{% url 'userlogout' %}" class="text-danger ms-2 d-inline d-sm-none fs-5"
+                                 title="Logout">
+                                 <i class="bi bi-box-arrow-right"></i>
+                              </a>
+                           </div>
+                           {% else %}
+                           <!-- 👤 Default login button -->
+                           <a href="#" class="text-reset d-flex align-items-center" data-bs-toggle="modal"
+                              data-bs-target="#userModal">
+                              <i class="bi bi-person-circle fs-5"></i>
+                              <span class="ms-1 d-none d-md-inline">Login</span>
                            </a>
+                           {% endif %}
+
                         </div>
                         <div class="list-inline-item">
                            <a class="text-muted position-relative" data-bs-toggle="offcanvas"
@@ -124,6 +140,30 @@
             </div>
             <div class="col-xxl-3 col-lg-4 d-flex align-items-center">
                <div class="list-inline ms-auto d-lg-block d-none">
+
+                  <div class="list-inline-item me-5">
+                     {% if request.session.user_name %}
+                     <!-- ✅ Logged-in user display -->
+                     <div class="d-inline-flex align-items-center">
+                        <i class="bi bi-person-circle fs-5 me-2 text-primary"></i>
+                        <span class="fw-semibold text-dark">{{ request.session.user_name }}</span>
+                        <a href="{% url 'userlogout' %}" class="ms-3 text-danger small text-decoration-none">Logout</a>
+                     </div>
+                     {% else %}
+                     <!-- 👤 Default login button -->
+                     <a href="#" class="text-reset" data-bs-toggle="modal" data-bs-target="#userModal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                           class="feather feather-user">
+                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                           <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span class="ms-1">Login</span>
+                     </a>
+                     {% endif %}
+
+                  </div>
+
                   <div class="list-inline-item me-5">
                      <a href="shop-wishlist.html" class="text-reset position-relative">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -139,16 +179,7 @@
                         </span>
                      </a>
                   </div>
-                  <div class="list-inline-item me-5">
-                     <a href="#!" class="text-reset" data-bs-toggle="modal" data-bs-target="#userModal">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                           class="feather feather-user">
-                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                           <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                     </a>
-                  </div>
+
                   <div class="list-inline-item">
                      <a class="text-reset position-relative" data-bs-toggle="offcanvas" data-bs-target="#offcanvasRight"
                         href="#offcanvasExample" role="button" aria-controls="offcanvasRight">
@@ -297,8 +328,18 @@
                      <li class="nav-item">
                         <a class="nav-link" href="{% url 'contact' %}">Contact Us</a>
                      </li>
+                     {% if request.session.user_id %}
                      <li class="nav-item">
                         <a class="nav-link" href="{% url 'profile' %}">My Account</a>
+                     </li>
+                     {% endif %}
+                     {% if not request.session.user_id %}
+                     <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#userModal">
+                           Login / Register
+                        </a>
+                     </li>
+                     {% endif %}
                   </ul>
                </div>
             </div>
@@ -315,19 +356,34 @@
                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-               <form>
+               {% if messages %}
+               {% for message in messages %}
+               <div class="alert 
+      {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}
+      alert-dismissible fade show mt-2" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+               </div>
+               {% endfor %}
+               {% endif %}
+               <form id="modalLoginForm" novalidate>
+                  {% csrf_token %}
                   <div class="mb-3">
-                     <label for="email" class="form-label">Email address</label>
-                     <input type="email" class="form-control" id="email" placeholder="Enter Email address"
-                        required="" />
+                     <label for="email" class="form-label">Email or Phone</label>
+                     <input type="text" class="form-control" id="email" name="formSigninEmail" required
+                        placeholder="Enter Email or Phone" />
                   </div>
                   <div class="mb-5">
                      <label for="password" class="form-label">Password</label>
-                     <input type="password" class="form-control" id="password" placeholder="Enter Password"
-                        required="" />
-
+                     <input type="password" class="form-control" id="password" name="formSigninPassword" required
+                        placeholder="Enter Password" />
                   </div>
-                  <button type="submit" class="btn btn-primary">Login</button>
+                  <div id="modalMessageArea"></div>
+                  <button type="submit" id="modalLoginBtn" class="btn btn-primary w-100">
+                     <span class="btn-text">Login</span>
+                     <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+                  </button>
+
                </form>
             </div>
             <div class="modal-footer border-0 justify-content-center">
@@ -442,7 +498,7 @@
                      <!-- nav item -->
                      <ul class="nav flex-column nav-pills nav-pills-dark">
                         <li class="nav-item">
-                           <a class="nav-link ac.0olllljn       tive" aria-current="page" href="{% url 'profile' %}">
+                           <a class="nav-link" aria-current="page" href="{% url 'profile' %}">
                               <i class="feather-icon icon-user me-2"></i>
                               My Profile
                            </a>
@@ -491,7 +547,7 @@
                </div>
 
                {% block content %}
-             
+
                {% endblock %}
             </div>
          </div>
@@ -510,23 +566,23 @@
          <ul class="nav flex-column nav-pills nav-pills-dark">
             <!-- nav item -->
             <li class="nav-item">
-               <a class="nav-link" aria-current="page" href="account-orders.html">
+               <a class="nav-link" aria-current="page" href="{% url 'profile' %}">
+                  <i class="feather-icon icon-user me-2"></i>
+                  My Profile
+               </a>
+            </li>
+            <!-- nav item -->
+
+            <li class="nav-item">
+               <a class="nav-link" href="{% url 'order-details' %}">
                   <i class="feather-icon icon-shopping-bag me-2"></i>
-                  Your Orders
+                  Orders
                </a>
             </li>
             <!-- nav item -->
 
             <li class="nav-item">
-               <a class="nav-link active" href="account-settings.html">
-                  <i class="feather-icon icon-settings me-2"></i>
-                  Settings
-               </a>
-            </li>
-            <!-- nav item -->
-
-            <li class="nav-item">
-               <a class="nav-link" href="account-address.html">
+               <a class="nav-link" href="{% url 'address' %}">
                   <i class="feather-icon icon-map-pin me-2"></i>
                   Address
                </a>
@@ -534,7 +590,7 @@
             <!-- nav item -->
 
             <li class="nav-item">
-               <a class="nav-link" href="account-payment-method.html">
+               <a class="nav-link" href="{% url 'payment-method' %}">
                   <i class="feather-icon icon-credit-card me-2"></i>
                   Payment Method
                </a>
@@ -542,9 +598,9 @@
             <!-- nav item -->
 
             <li class="nav-item">
-               <a class="nav-link" href="account-notification.html">
+               <a class="nav-link" href="{% url 'rewards' %}">
                   <i class="feather-icon icon-bell me-2"></i>
-                  Notification
+                  Rewards
                </a>
             </li>
          </ul>
@@ -554,7 +610,7 @@
             <ul class="nav flex-column nav-pills nav-pills-dark">
                <!-- nav item -->
                <li class="nav-item">
-                  <a class="nav-link" href="../index.html">
+                  <a class="nav-link" href="{% url 'userlogout' %}">
                      <i class="feather-icon icon-log-out me-2"></i>
                      Log out
                   </a>
@@ -730,6 +786,111 @@
    <script src="{% static 'assets/libs/tiny-slider/dist/min/tiny-slider.js' %}"></script>
    <script src="{% static 'assets/js/vendors/tns-slider.js' %}"></script>
    <script src="{% static 'assets/js/vendors/zoom.js' %}"></script>
+
+
+   <script>
+      // Auto-hide alerts after 4 seconds
+      setTimeout(() => {
+         document.querySelectorAll('.alert').forEach(el => {
+            let fade = new bootstrap.Alert(el);
+            fade.close();
+         });
+      }, 4000);
+
+      // Auto-close login modal after success message
+      document.addEventListener('DOMContentLoaded', () => {
+         const successAlert = document.querySelector('.alert-success');
+         if (successAlert) {
+            const modalEl = document.getElementById('userModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) {
+               setTimeout(() => modalInstance.hide(), 1500);
+            }
+         }
+      });
+   </script>
+
+   <script>
+      document.addEventListener("DOMContentLoaded", function () {
+         const loginForm = document.getElementById("modalLoginForm");
+         const messageArea = document.getElementById("modalMessageArea");
+         const loginBtn = document.getElementById("modalLoginBtn");
+
+         if (loginForm) {
+            loginForm.addEventListener("submit", async function (e) {
+               e.preventDefault();
+               messageArea.innerHTML = "";
+
+               const formData = new FormData(loginForm);
+               const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+               const btnText = loginBtn.querySelector(".btn-text");
+               const spinner = loginBtn.querySelector(".spinner-border");
+
+               // Show loading state
+               loginBtn.disabled = true;
+               btnText.textContent = "Logging in...";
+               spinner.classList.remove("d-none");
+
+               try {
+                  const response = await fetch("{% url 'userlogin' %}", {
+                     method: "POST",
+                     headers: {
+                        "X-CSRFToken": csrfToken,
+                        "X-Requested-With": "XMLHttpRequest"
+                     },
+                     body: formData
+                  });
+
+                  let data;
+                  try {
+                     data = await response.json();
+                  } catch {
+                     throw new Error("Invalid server response");
+                  }
+
+                  // Reset button state
+                  loginBtn.disabled = false;
+                  btnText.textContent = "Login";
+                  spinner.classList.add("d-none");
+
+                  if (data.status === "success") {
+                     messageArea.innerHTML = `
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+              ${data.message}
+            </div>
+          `;
+
+                     // Close modal and reload after short delay
+                     setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById("userModal"));
+                        if (modal) modal.hide();
+                        location.reload();
+                     }, 1500);
+
+                  } else {
+                     messageArea.innerHTML = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              ${data.message}
+            </div>
+          `;
+                  }
+               } catch (error) {
+                  messageArea.innerHTML = `
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            Something went wrong. Please try again.
+          </div>
+        `;
+
+                  // Reset button state
+                  loginBtn.disabled = false;
+                  btnText.textContent = "Login";
+                  spinner.classList.add("d-none");
+               }
+            });
+         }
+      });
+   </script>
+
 </body>
 
 

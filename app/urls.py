@@ -29,4 +29,9 @@ urlpatterns = [
     path('products/', views.products, name='products'),
     path('add-productcategory/', views.add_productcategory, name='add-productcategory'),
     path('add-products/', views.add_products, name='add-products'),
+    path('approve-product/', views.approve_product, name='approve-product'),
+    path('approve-product-list/', views.approve_product_list, name='approve-product-list'),
+    path('order-list/', views.order_list, name='order-list'),
+    path('sellers/', views.sellers, name='sellers'),
+    path('add-sellers/', views.add_sellers, name='add-sellers'),
 ]

@@ -1,29 +1,24 @@
-{% extends "superadmin/adminbase.html" %}
+{% extends 'superadmin/adminbase.html' %}
 {% load static %}
-{% block title %}Products - Superadmin{% endblock %}
+{% block title %}Order List - Superadmin{% endblock %}
 {% block content %}
 
+         <!-- main wrapper -->
          <main class="main-content-wrapper">
             <div class="container">
+               <!-- row -->
                <div class="row mb-8">
                   <div class="col-md-12">
                      <!-- page header -->
-                     <div class="d-md-flex justify-content-between align-items-center">
-                        <div>
-                           <h2>Products</h2>
-                           <!-- breacrumb -->
-                           <nav aria-label="breadcrumb">
-                              <ol class="breadcrumb mb-0">
-                                 <li class="breadcrumb-item"><a href="{% url 'admin-home' %}" class="text-inherit">Dashboard</a></li>
-								 <li class="breadcrumb-item"><a href="{% url 'products' %}" class="text-inherit">Product Categories</a></li>
-                                 <li class="breadcrumb-item active" aria-current="page">Add Product by Category </li>
-                              </ol>
-                           </nav>
-                        </div>
-                        <!-- button -->
-                        <div>
-                           <a href="{% url 'add-products' %}" class="btn btn-primary">Add Product</a>
-                        </div>
+                     <div>
+                        <h2>Order List</h2>
+                        <!-- breacrumb -->
+                        <nav aria-label="breadcrumb">
+                           <ol class="breadcrumb mb-0">
+                              <li class="breadcrumb-item"><a href="{% url 'admin-home' %}" class="text-inherit">Dashboard</a></li>
+                              <li class="breadcrumb-item active" aria-current="page">Order List</li>
+                           </ol>
+                        </nav>
                      </div>
                   </div>
                </div>
@@ -32,28 +27,28 @@
                   <div class="col-xl-12 col-12 mb-5">
                      <!-- card -->
                      <div class="card h-100 card-lg">
-                        <div class="px-6 py-6">
+                        <div class="p-6">
                            <div class="row justify-content-between">
-                              <!-- form -->
-                              <div class="col-lg-4 col-md-6 col-12 mb-2 mb-lg-0">
+                              <div class="col-md-4 col-12 mb-2 mb-md-0">
+                                 <!-- form -->
                                  <form class="d-flex" role="search">
-                                    <input class="form-control" type="search" placeholder="Search Products" aria-label="Search" />
+                                    <input class="form-control" type="search" placeholder="Search" aria-label="Search" />
                                  </form>
                               </div>
-                              <!-- select option -->
                               <div class="col-lg-2 col-md-4 col-12">
+                                 <!-- select -->
                                  <select class="form-select">
                                     <option selected>Status</option>
-                                    <option value="1">Active</option>
-                                    <option value="2">Deactive</option>
-                                    <option value="3">Draft</option>
+                                    <option value="Success">Success</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Cancel">Cancel</option>
                                  </select>
                               </div>
                            </div>
                         </div>
                         <!-- card body -->
                         <div class="card-body p-0">
-                           <!-- table -->
+                           <!-- table responsive -->
                            <div class="table-responsive">
                               <table class="table table-centered table-hover text-nowrap table-borderless mb-0 table-with-checkbox">
                                  <thead class="bg-light">
@@ -65,11 +60,12 @@
                                           </div>
                                        </th>
                                        <th>Image</th>
-                                       <th>Proudct Name</th>
-                                       <th>Category</th>
+                                       <th>Order Name</th>
+                                       <th>Customer</th>
+                                       <th>Date & TIme</th>
+                                       <th>Payment</th>
                                        <th>Status</th>
-                                       <th>Price</th>
-                                       <th>Create at</th>
+                                       <th>Amount</th>
                                        <th></th>
                                     </tr>
                                  </thead>
@@ -77,21 +73,24 @@
                                     <tr>
                                        <td>
                                           <div class="form-check">
-                                             <input class="form-check-input" type="checkbox" value="" id="productOne" />
-                                             <label class="form-check-label" for="productOne"></label>
+                                             <input class="form-check-input" type="checkbox" value="" id="orderOne" />
+                                             <label class="form-check-label" for="orderOne"></label>
                                           </div>
                                        </td>
                                        <td>
                                           <a href="#!"><img src="{% static 'assets/images/products/product-img-1.jpg' %}" alt="" class="icon-shape icon-md" /></a>
                                        </td>
-                                       <td><a href="#" class="text-reset">Haldiram's Sev Bhujia</a></td>
-                                       <td>Snack & Munchies</td>
+                                       <td><a href="#" class="text-reset">FC#1007</a></td>
+                                       <td>Jennifer Sullivan</td>
+
+                                       <td>01 May 2023 (10:12 am)</td>
+                                       <td>Paypal</td>
 
                                        <td>
-                                          <span class="badge bg-light-primary text-dark-primary">Active</span>
+                                          <span class="badge bg-light-primary text-dark-primary">Success</span>
                                        </td>
-                                       <td>$18.00</td>
-                                       <td>24 Nov 2022</td>
+                                       <td>$12.99</td>
+
                                        <td>
                                           <div class="dropdown">
                                              <a href="#" class="text-reset" data-bs-toggle="dropdown" aria-expanded="false">
@@ -115,12 +114,12 @@
                                        </td>
                                     </tr>
                                    
-                                 
+                                    
                                  </tbody>
                               </table>
                            </div>
                         </div>
-                        <div class="border-top d-md-flex justify-content-between align-items-center px-6 py-6">
+                        <div class="border-top d-md-flex justify-content-between align-items-center p-6">
                            <span>Showing 1 to 8 of 12 entries</span>
                            <nav class="mt-2 mt-md-0">
                               <ul class="pagination mb-0">
@@ -137,5 +136,4 @@
                </div>
             </div>
          </main>
-
-{% endblock %}
+		 {% endblock %}

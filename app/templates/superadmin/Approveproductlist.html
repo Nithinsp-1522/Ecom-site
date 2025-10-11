@@ -10,20 +10,18 @@
                      <!-- page header -->
                      <div class="d-md-flex justify-content-between align-items-center">
                         <div>
-                           <h2>Products</h2>
+                           <h2>Approve Products</h2>
                            <!-- breacrumb -->
                            <nav aria-label="breadcrumb">
                               <ol class="breadcrumb mb-0">
                                  <li class="breadcrumb-item"><a href="{% url 'admin-home' %}" class="text-inherit">Dashboard</a></li>
-								 <li class="breadcrumb-item"><a href="{% url 'products' %}" class="text-inherit">Product Categories</a></li>
-                                 <li class="breadcrumb-item active" aria-current="page">Add Product by Category </li>
+                                 <li class="breadcrumb-item"><a href="{% url 'approve-product' %}" class="text-inherit">Approve Products</a></li>
+                                 <li class="breadcrumb-item active" aria-current="page">Approve Products List</li>
                               </ol>
                            </nav>
                         </div>
                         <!-- button -->
-                        <div>
-                           <a href="{% url 'add-products' %}" class="btn btn-primary">Add Product</a>
-                        </div>
+                        
                      </div>
                   </div>
                </div>
@@ -44,9 +42,9 @@
                               <div class="col-lg-2 col-md-4 col-12">
                                  <select class="form-select">
                                     <option selected>Status</option>
-                                    <option value="1">Active</option>
-                                    <option value="2">Deactive</option>
-                                    <option value="3">Draft</option>
+                                    <option value="1">Approve all Products</option>
+                                    <option value="2">Approve Selected Products</option>
+                                    <option value="3">Delete Products</option>
                                  </select>
                               </div>
                            </div>
@@ -100,14 +98,14 @@
                                              <ul class="dropdown-menu">
                                                 <li>
                                                    <a class="dropdown-item" href="#">
-                                                      <i class="bi bi-trash me-3"></i>
-                                                      Delete
+                                                      <i class="bi bi-check me-3"></i>
+                                                      Approve
                                                    </a>
                                                 </li>
                                                 <li>
                                                    <a class="dropdown-item" href="#">
-                                                      <i class="bi bi-pencil-square me-3"></i>
-                                                      Edit
+                                                      <i class="bi bi-trash me-3"></i>
+                                                      Delete
                                                    </a>
                                                 </li>
                                              </ul>
