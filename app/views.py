@@ -4,12 +4,18 @@ from django.contrib.auth.hashers import make_password, check_password
 from . import db
 import re
 from django.http import JsonResponse
+from django.views.decorators.cache import cache_control
+from django.core.mail import send_mail
+from django.conf import settings
+import random, string
+from django.contrib.auth.hashers import make_password
 
 # Normalize phone numbers
 def normalize_phone(raw):
     """Keep only digits (works for +91, spaces, etc.)"""
     return re.sub(r"\D", "", raw or "")
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def index(request):
     return render(request, 'index.html')
 
@@ -87,7 +93,7 @@ def userlogin(request):
 
     return render(request, "signin.html")
 
-
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def userlogout(request):
     # clear old messages
     storage = messages.get_messages(request)
@@ -100,7 +106,10 @@ def userlogout(request):
 
 
 # user views
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def profile(request):
+    if "user_id" not in request.session:
+        return redirect("userlogin")
     return render(request, 'user/account-settings.html')
 
 def address(request):
@@ -121,14 +130,149 @@ def rewards(request):
 
 
 # Admin views
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_home(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
     return render(request, 'superadmin/adminhome.html')
 
-def admin_login(request):
-    return render(request, 'superadmin/adminsignin.html')
+def admin_register(request):
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "").strip()
+        confirm_password = request.POST.get("confirm_password", "").strip()
 
+        # Validate
+        if not username or not email or not password:
+            messages.error(request, "All fields are required.")
+            return redirect("admin-register")
+
+        if password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return redirect("admin-register")
+
+        existing = db.selectone("SELECT * FROM adminusers WHERE username=%s OR email=%s", (username, email))
+        if existing:
+            messages.error(request, "Username or email already exists.")
+            return redirect("admin-register")
+
+        hashed_pwd = make_password(password)
+        db.insert(
+            "INSERT INTO adminusers (username, email, password, is_admin) VALUES (%s, %s, %s, %s)",
+            (username, email, hashed_pwd, True)
+        )
+
+        messages.success(request, "Admin registered successfully! Please log in.")
+        return redirect("adminlogin")
+
+    return render(request, "superadmin/adminregister.html")
+
+def admin_login(request):
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "").strip()
+
+        # Allow login by username OR email
+        admin_user = db.selectone(
+            "SELECT * FROM adminusers WHERE username=%s OR email=%s", (username, username)
+        )
+
+        # Clear any old messages
+        storage = messages.get_messages(request)
+        storage.used = True
+
+        if admin_user and check_password(password, admin_user["password"]):
+            request.session["admin_id"] = admin_user["id"]
+            request.session["admin_username"] = admin_user["username"]
+            messages.success(request, f"Welcome back, {admin_user['username']}!")
+            return redirect("admin-home")
+        else:
+            messages.error(request, "Invalid username, email, or password.")
+            return redirect("adminlogin")
+
+    return render(request, "superadmin/adminsignin.html")
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def adminlogout(request):
+    storage = messages.get_messages(request)
+    storage.used = True
+    request.session.flush()
+    messages.success(request, "Admin logged out successfully.")
     return render(request, 'index.html')
+
+def admin_forgot_password(request):
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip()
+        admin = db.selectone("SELECT * FROM adminusers WHERE email=%s", (email,))
+
+        if not admin:
+            messages.error(request, "No admin found with that email.")
+            return redirect("admin-forgot-password")
+
+        # Generate OTP or temporary reset code
+        otp = ''.join(random.choices(string.digits, k=6))
+        request.session['admin_reset_email'] = email
+        request.session['admin_reset_otp'] = otp
+
+        # Send email (requires EMAIL settings configured)
+        try:
+            send_mail(
+                subject="Admin Password Reset OTP",
+                message=f"Your OTP for admin password reset is: {otp}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            messages.success(request, "OTP sent to your email. Please check your inbox.")
+            return redirect("admin-reset-verify")
+        except Exception as e:
+            messages.error(request, "Error sending email. Check email settings.")
+            print(e)
+            return redirect("admin-forgot-password")
+
+    return render(request, "superadmin/forgot-password.html")
+
+
+def admin_reset_verify(request):
+    if request.method == "POST":
+        otp = request.POST.get("otp", "").strip()
+        new_password = request.POST.get("new_password", "").strip()
+        confirm_password = request.POST.get("confirm_password", "").strip()
+
+        session_otp = request.session.get("admin_reset_otp")
+        email = request.session.get("admin_reset_email")
+
+        if not session_otp or not email:
+            messages.error(request, "Session expired. Please restart the reset process.")
+            return redirect("admin-forgot-password")
+
+        if otp != session_otp:
+            messages.error(request, "Invalid OTP.")
+            return redirect("admin-reset-verify")
+
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return redirect("admin-reset-verify")
+
+        hashed_pwd = make_password(new_password)
+        db.update("UPDATE adminusers SET password=%s WHERE email=%s", (hashed_pwd, email))
+
+        # Clean up session
+        request.session.pop("admin_reset_email", None)
+        request.session.pop("admin_reset_otp", None)
+
+        messages.success(request, "Password reset successful! You can now log in.")
+        return redirect("adminlogin")
+
+    return render(request, "superadmin/admin_reset_verify.html")
+
+def carousel_images(request):
+    return render(request, 'superadmin/carousel-images.html')
+
+def add_carousel_image(request):
+    return render(request, 'superadmin/add-carousel-image.html')
+
 
 def categories(request):
     return render(request, 'superadmin/categories.html')

@@ -23,6 +23,8 @@ urlpatterns = [
     path('admin-home/', views.admin_home, name='admin-home'),
     path('adminlogin/', views.admin_login, name='adminlogin'),
     path('adminlogout/', views.adminlogout, name='adminlogout'),
+    path('admin-forgot-password/', views.admin_forgot_password, name='admin-forgot-password'),
+    path('admin-reset-verify/', views.admin_reset_verify, name='admin-reset-verify'),
     path('categories/', views.categories, name='categories'),
     path('add-category/', views.add_category, name='add-category'),
     path('add-subcategory/', views.add_subcategory, name='add-subcategory'),
@@ -34,4 +36,7 @@ urlpatterns = [
     path('order-list/', views.order_list, name='order-list'),
     path('sellers/', views.sellers, name='sellers'),
     path('add-sellers/', views.add_sellers, name='add-sellers'),
+    path('admin-register/', views.admin_register, name='admin-register'),
+    path('carousel-images/', views.carousel_images, name='carousel-images'),
+    path('add-carousel-image/', views.add_carousel_image, name='add-carousel-image'),
 ]

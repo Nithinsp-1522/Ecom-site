@@ -1,0 +1,88 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+   <title>Admin Registration</title>
+   <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/images/favicon/favicon.ico' %}" />
+   <link href="{% static 'assets/libs/bootstrap-icons/font/bootstrap-icons.min.css' %}" rel="stylesheet" />
+   <link href="{% static 'assets/css/theme.min.css' %}" rel="stylesheet" />
+</head>
+<body>
+   <div class="border-bottom shadow-sm">
+      <nav class="navbar navbar-light py-2">
+         <div class="container justify-content-center justify-content-lg-between">
+            <a class="navbar-brand" href="{% url 'index' %}">
+               <img src="{% static '/assets/images/logo/freshcart-logo.svg' %}" alt=""
+                  class="d-inline-block align-text-top" />
+            </a>
+         </div>
+      </nav>
+   </div>
+
+   <main>
+      <section class="my-lg-14 my-8">
+         <div class="container">
+            <div class="row justify-content-center align-items-center">
+               <div class="col-12 col-md-6 col-lg-5 order-lg-1 order-2">
+                  <img src="{% static '/assets/images/svg-graphics/signup-g.svg' %}" alt="" class="img-fluid" />
+               </div>
+
+               <div class="col-12 col-md-6 col-lg-5 order-lg-2 order-1">
+                  <div class="mb-lg-9 mb-5">
+                     <h1 class="mb-1 h2 fw-bold">Admin Registration</h1>
+                     <p>Create a new admin account below.</p>
+                  </div>
+
+                  {% if messages %}
+                     {% for message in messages %}
+                        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show" role="alert">
+                           {{ message }}
+                           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                     {% endfor %}
+                  {% endif %}
+
+                  <form method="POST" action="{% url 'admin-register' %}">
+                     {% csrf_token %}
+                     <div class="row g-3">
+                        <div class="col-12">
+                           <label for="username" class="form-label">Username</label>
+                           <input type="text" name="username" id="username" class="form-control" placeholder="Enter username" required />
+                        </div>
+
+                        <div class="col-12">
+                           <label for="email" class="form-label">Email</label>
+                           <input type="email" name="email" id="email" class="form-control" placeholder="Enter admin email" required />
+                        </div>
+
+                        <div class="col-12">
+                           <label for="password" class="form-label">Password</label>
+                           <input type="password" name="password" id="password" class="form-control" placeholder="Enter password" required />
+                        </div>
+
+                        <div class="col-12">
+                           <label for="confirm_password" class="form-label">Confirm Password</label>
+                           <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="Confirm password" required />
+                        </div>
+
+                        <div class="col-12 d-grid mt-3">
+                           <button type="submit" class="btn btn-primary">Register Admin</button>
+                        </div>
+
+                        <div class="text-center mt-3">
+                           Already have an account?
+                           <a href="{% url 'adminlogin' %}">Login here</a>
+                        </div>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </section>
+   </main>
+
+   <script src="{% static 'assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js' %}"></script>
+</body>
+</html>
