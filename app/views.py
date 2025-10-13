@@ -3,12 +3,18 @@ from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from . import db
 import re
+import os
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.cache import cache_control
 from django.core.mail import send_mail
 from django.conf import settings
 import random, string
 from django.contrib.auth.hashers import make_password
+from django.utils.crypto import get_random_string
+from django.core.files.storage import FileSystemStorage
+from datetime import datetime
+from django.shortcuts import get_object_or_404
 
 # Normalize phone numbers
 def normalize_phone(raw):
@@ -17,7 +23,8 @@ def normalize_phone(raw):
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def index(request):
-    return render(request, 'index.html')
+    carousels = db.selectall("SELECT * FROM carousel_images ORDER BY id DESC")
+    return render(request, "index.html", {"carousels": carousels})
 
 def about(request):
     return render(request, 'about.html')
@@ -268,10 +275,97 @@ def admin_reset_verify(request):
     return render(request, "superadmin/admin_reset_verify.html")
 
 def carousel_images(request):
-    return render(request, 'superadmin/carousel-images.html')
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    data = db.selectall("SELECT * FROM carousel_images ORDER BY id DESC")
+    return render(request, "superadmin/carousel-images.html", {"images": data})
+
 
 def add_carousel_image(request):
-    return render(request, 'superadmin/add-carousel-image.html')
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    if request.method == "POST":
+        carousel_name = request.POST.get("carousel_name", "").strip()
+        description = request.POST.get("description", "").strip()
+        image_file = request.FILES.get("image")
+
+        if not carousel_name or not image_file:
+            messages.error(request, "Please fill all required fields.")
+            return redirect("add-carousel-image")
+
+        # Save the file inside /media/carousels/
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "carousels"))
+        filename = get_random_string(8) + "_" + image_file.name
+        saved_name = fs.save(filename, image_file)
+        image_path = f"carousels/{saved_name}"
+
+        # Save to DB (create table carousel_images if not exists)
+        db.insert("""
+            INSERT INTO carousel_images (title, description, image)
+            VALUES (%s, %s, %s)
+        """, (carousel_name, description, image_path))
+
+        messages.success(request, f"Carousel image '{carousel_name}' added successfully!")
+        return redirect("carousel-images")
+
+    return render(request, "superadmin/add-carousel-image.html")
+
+# ✅ Delete Carousel
+def delete_carousel(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    item = db.selectone("SELECT * FROM carousel_images WHERE id=%s", (id,))
+    if not item:
+        messages.error(request, "Carousel not found.")
+        return redirect("carousel-images")
+
+    # Delete image file
+    if item["image"]:
+        photo_path = os.path.join(settings.MEDIA_ROOT, item["image"])
+        if os.path.exists(photo_path):
+            os.remove(photo_path)
+
+    db.delete("DELETE FROM carousel_images WHERE id=%s", (id,))
+    messages.success(request, f"Carousel '{item['title']}' deleted successfully.")
+    return redirect("carousel-images")
+
+
+# ✅ Edit Carousel
+def edit_carousel(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    carousel = db.selectone("SELECT * FROM carousel_images WHERE id=%s", (id,))
+    if not carousel:
+        messages.error(request, "Carousel not found.")
+        return redirect("carousel-images")
+
+    if request.method == "POST":
+        title = request.POST.get("carousel_name", "").strip()
+        description = request.POST.get("description", "").strip()
+        image_file = request.FILES.get("image")
+
+        image_path = carousel["image"]
+        if image_file:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "carousels"))
+            filename = get_random_string(8) + "_" + image_file.name
+            saved_name = fs.save(filename, image_file)
+            image_path = f"carousels/{saved_name}"
+
+        db.update("""
+            UPDATE carousel_images
+            SET title=%s, description=%s, image=%s
+            WHERE id=%s
+        """, (title, description, image_path, id))
+
+        messages.success(request, "Carousel updated successfully!")
+        return redirect("carousel-images")
+
+    return render(request, "superadmin/edit-carousel.html", {"carousel": carousel})
+
 
 
 def categories(request):
@@ -302,7 +396,151 @@ def order_list(request):
     return render(request, 'superadmin/order-list.html')
 
 def sellers(request):
-    return render(request, 'superadmin/Sellers.html')
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    # Fetch all admins (you can later filter by is_admin if you have sellers too)
+    data = db.selectall("SELECT * FROM adminusers ORDER BY id DESC")
+
+    return render(request, "superadmin/Sellers.html", {"admins": data})
 
 def add_sellers(request):
-    return render(request, 'superadmin/Add-Sellers.html')
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+ # ✅ clear old messages before rendering this form
+    storage = messages.get_messages(request)
+    storage.used = True
+    
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        email = request.POST.get("email", "").strip()
+        phone = request.POST.get("phone", "").strip()
+        password = request.POST.get("password", "").strip()
+        organization = request.POST.get("organization", "").strip()
+        address = request.POST.get("address", "").strip()
+        joining_date = request.POST.get("joining_date", "").strip()
+        photo_file = request.FILES.get("photo")
+
+        if not name or not email or not password:
+            messages.error(request, "Please fill all required fields.")
+            return redirect("add-sellers")
+
+        existing = db.selectone("SELECT * FROM adminusers WHERE email=%s", (email,))
+        if existing:
+            messages.error(request, "Email already exists.")
+            return redirect("add-sellers")
+        
+        # Convert joining date
+        try:
+            formatted_date = datetime.strptime(joining_date, "%d/%m/%Y").date() if joining_date else None
+        except ValueError:
+            formatted_date = None
+
+        photo_path = None
+        if photo_file:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "admins"))
+            filename = get_random_string(8) + "_" + photo_file.name
+            saved_name = fs.save(filename, photo_file)
+            photo_path = f"admins/{saved_name}"
+
+        hashed_pwd = make_password(password)
+
+        db.insert("""
+            INSERT INTO adminusers (username, email, phone, password, is_admin, organization, address, photo, joining_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (name, email, phone, hashed_pwd, True, organization, address, photo_path, formatted_date))
+
+        messages.success(request, f"{name.capitalize()} created successfully!")
+        return redirect("add-sellers")
+
+    return render(request, "superadmin/Add-Sellers.html")
+
+# ✅ DELETE ADMIN
+def delete_admin(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    # Check admin exists
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (id,))
+    if not admin:
+        messages.error(request, "Admin not found.")
+        return redirect("sellers")
+
+    # Delete the photo file if it exists
+    if admin["photo"]:
+        photo_path = os.path.join(settings.MEDIA_ROOT, admin["photo"])
+        if os.path.exists(photo_path):
+            os.remove(photo_path)
+
+    # Delete the admin record
+    db.delete("DELETE FROM adminusers WHERE id=%s", (id,))
+    messages.success(request, f"Admin '{admin['username']}' deleted successfully.")
+    response = redirect("sellers")
+
+    # ✅ Immediately clear message storage (prevents showing again later)
+    storage = messages.get_messages(request)
+    storage.used = True
+
+    return response
+
+
+
+# ✅ EDIT ADMIN
+def edit_admin(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    # Get existing admin data
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (id,))
+    if not admin:
+        messages.error(request, "Admin not found.")
+        return redirect("sellers")
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        email = request.POST.get("email", "").strip()
+        phone = request.POST.get("phone", "").strip()
+        organization = request.POST.get("organization", "").strip()
+        address = request.POST.get("address", "").strip()
+        joining_date = request.POST.get("joining_date", "").strip()
+        photo_file = request.FILES.get("photo")
+
+        # Convert date (dd/mm/yyyy → yyyy-mm-dd)
+        from datetime import datetime
+        try:
+            formatted_date = datetime.strptime(joining_date, "%d/%m/%Y").date() if joining_date else None
+        except ValueError:
+            formatted_date = None
+
+        # Update photo if a new one is uploaded
+        photo_path = admin["photo"]
+        if photo_file:
+            # Delete old photo
+            if photo_path:
+                old_photo_path = os.path.join(settings.MEDIA_ROOT, photo_path)
+                if os.path.exists(old_photo_path):
+                    os.remove(old_photo_path)
+
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "admins"))
+            filename = get_random_string(8) + "_" + photo_file.name
+            saved_name = fs.save(filename, photo_file)
+            photo_path = f"admins/{saved_name}"
+
+        # Update DB record
+        db.update("""
+            UPDATE adminusers 
+            SET username=%s, email=%s, phone=%s, organization=%s, address=%s, photo=%s, joining_date=%s
+            WHERE id=%s
+        """, (name, email, phone, organization, address, photo_path, formatted_date, id))
+
+        messages.success(request, "Admin updated successfully!")
+        response = redirect("sellers")
+
+    # ✅ Immediately clear message storage (prevents showing again later)
+        storage = messages.get_messages(request)
+        storage.used = True
+
+        return response
+
+    return render(request, "superadmin/edit-admin.html", {"admin": admin})

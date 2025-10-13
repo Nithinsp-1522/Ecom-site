@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -36,7 +38,15 @@ urlpatterns = [
     path('order-list/', views.order_list, name='order-list'),
     path('sellers/', views.sellers, name='sellers'),
     path('add-sellers/', views.add_sellers, name='add-sellers'),
+    path('edit-admin/<int:id>/', views.edit_admin, name='edit-admin'),
+    path('delete-admin/<int:id>/', views.delete_admin, name='delete-admin'),
     path('admin-register/', views.admin_register, name='admin-register'),
     path('carousel-images/', views.carousel_images, name='carousel-images'),
     path('add-carousel-image/', views.add_carousel_image, name='add-carousel-image'),
-]
+    path('edit-carousel/<int:id>/', views.edit_carousel, name='edit-carousel'),
+    path('delete-carousel/<int:id>/', views.delete_carousel, name='delete-carousel'),
+
+    
+
+    
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

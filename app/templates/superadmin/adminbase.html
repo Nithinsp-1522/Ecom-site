@@ -137,7 +137,7 @@
 														</div>
 													</div>
 												</a>
-											</li>	
+											</li>
 										</ul>
 									</div>
 									<div class="border-top px-5 py-4 text-center">
@@ -158,12 +158,12 @@
 									</div>
 
 									<ul class="list-unstyled px-2 py-3">
-										
+
 										<li>
 											<a class="dropdown-item" href="#!">Profile</a>
 										</li>
 
-										
+
 									</ul>
 									<div class="border-top px-5 py-3">
 										<a href="{% url 'adminlogout' %}">Log Out</a>
@@ -217,7 +217,8 @@
 										</li>
 										<!-- Nav item -->
 										<li class="nav-item">
-											<a class="nav-link " href="{% url 'add-subcategory' %}">Add Sub Categories</a>
+											<a class="nav-link " href="{% url 'add-subcategory' %}">Add Sub
+												Categories</a>
 										</li>
 									</ul>
 								</div>
@@ -244,7 +245,7 @@
 									</ul>
 								</div>
 							</li>
-							
+
 							<li class="nav-item">
 								<a class="nav-link " href="{% url 'order-list' %} ">
 									<div class="d-flex align-items-center">
@@ -333,7 +334,8 @@
 										</li>
 										<!-- Nav item -->
 										<li class="nav-item">
-											<a class="nav-link " href="{% url 'add-subcategory' %}">Add Sub Categories</a>
+											<a class="nav-link " href="{% url 'add-subcategory' %}">Add Sub
+												Categories</a>
 										</li>
 									</ul>
 								</div>
@@ -359,7 +361,7 @@
 									</ul>
 								</div>
 							</li>
-							
+
 							<li class="nav-item">
 								<a class="nav-link" href="{% url 'order-list' %} ">
 									<div class="d-flex align-items-center">
@@ -367,7 +369,7 @@
 										<span class="nav-link-text">Orders</span>
 									</div>
 								</a>
-								
+
 							</li>
 
 							<li class="nav-item">
@@ -377,7 +379,7 @@
 										<span class="nav-link-text">Add Carousel Image</span>
 									</div>
 								</a>
-								
+
 							</li>
 
 							<li class="nav-item">
@@ -408,12 +410,12 @@
 					</div>
 				</div>
 			</nav>
-			
+
 			{% block content %}
-			
+
 			<!-- main wrapper -->
 			<main class="main-content-wrapper">
-				
+
 			</main>
 			{% endblock %}
 		</div>
@@ -430,9 +432,20 @@
 	<script src="{% static 'assets/libs/apexcharts/dist/apexcharts.min.js' %}"></script>
 	<script src="{% static 'assets/js/vendors/chart.js' %}"></script>
 	<script src="{% static 'assets/libs/quill/dist/quill.min.js' %}"></script>
-    <script src="{% static 'assets/js/vendors/editor.js' %}"></script>
-    <script src="{% static 'assets/libs/dropzone/dist/min/dropzone.min.js' %}"></script>
+	<script src="{% static 'assets/js/vendors/editor.js' %}"></script>
+	<script src="{% static 'assets/libs/dropzone/dist/min/dropzone.min.js' %}"></script>
 	<script src="{% static 'assets/js/vendors/dropzone.js' %}"></script>
+
+	<script>
+		setTimeout(() => {
+			const alerts = document.querySelectorAll('.alert');
+			alerts.forEach(alert => {
+				const bsAlert = new bootstrap.Alert(alert);
+				bsAlert.close();
+			});
+		}, 3000);
+	</script>
+
 </body>
 
 </html>
