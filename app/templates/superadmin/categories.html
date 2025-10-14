@@ -1,15 +1,27 @@
 {% extends 'superadmin/adminbase.html' %}
+{% load static %}
 {% block title %}Categories - Superadmin{% endblock %}
 
 {% block content %}
-<!-- main -->
 <main class="main-content-wrapper">
+
+	<!-- ✅ Django Messages -->
+	{% if messages %}
+	<div class="container mt-3">
+		{% for message in messages %}
+		<div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+			{{ message }}
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+		</div>
+		{% endfor %}
+	</div>
+	{% endif %}
+
 	<div class="container">
 		<!-- row -->
 		<div class="row mb-8">
 			<div class="col-md-12">
 				<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
-					<!-- pageheader -->
 					<div>
 						<h2>Categories</h2>
 						<nav aria-label="breadcrumb">
@@ -17,33 +29,28 @@
 								<li class="breadcrumb-item">
 									<a href="{% url 'admin-home' %}" class="text-inherit">Dashboard</a>
 								</li>
-								<li class="breadcrumb-item active" aria-current="page">
-									Add Categories
-								</li>
+								<li class="breadcrumb-item active" aria-current="page">Add Categories</li>
 							</ol>
 						</nav>
 					</div>
-					<!-- button -->
 					<div>
 						<a href="{% url 'add-category' %}" class="btn btn-primary">Add New Category</a>
 					</div>
 				</div>
 			</div>
 		</div>
+
 		<div class="row">
 			<div class="col-xl-12 col-12 mb-5">
-				<!-- card -->
 				<div class="card h-100 card-lg">
 					<div class="px-6 py-6">
 						<div class="row justify-content-between">
 							<div class="col-lg-4 col-md-6 col-12 mb-2 mb-md-0">
-								<!-- form -->
 								<form class="d-flex" role="search">
 									<input class="form-control" type="search" placeholder="Search Category"
 										aria-label="Search" />
 								</form>
 							</div>
-							<!-- select option -->
 							<div class="col-xl-2 col-md-4 col-12">
 								<select class="form-select">
 									<option selected>Status</option>
@@ -53,57 +60,55 @@
 							</div>
 						</div>
 					</div>
-					<!-- card body -->
+
 					<div class="card-body p-0">
-						<!-- table -->
 						<div class="table-responsive">
-							<table
-								class="table table-centered table-hover mb-0 text-nowrap table-borderless table-with-checkbox">
-								<thead class="bg-light">
+							<table class="table table-centered mb-0 text-nowrap table-borderless table-with-checkbox">
+								<thead>
 									<tr>
-										<th>
-											<div class="form-check">
-												<input class="form-check-input" type="checkbox" value=""
-													id="checkAll" />
-												<label class="form-check-label" for="checkAll"></label>
-											</div>
-										</th>
+										<th></th>
 										<th>Icon</th>
 										<th>Name</th>
-										<th>Product</th>
-										<th>Sub categories</th>
-
-										<th></th>
+										<th>Slug</th>
+										<th>Description</th>
+										<th>Created</th>
+										<th>Actions</th>
 									</tr>
 								</thead>
+
 								<tbody>
-									<tr>
-										
+									{% if categories %}
+									{% for category in categories %}
+									<tr class="align-middle">
+										<td></td>
 										<td>
-											<div class="form-check">
-												<input class="form-check-input" type="checkbox" value=""
-													id="categoryOne" />
-												<label class="form-check-label" for="categoryOne"></label>
-											</div>
+											{% if category.image %}
+											<img src="/media/{{ category.image }}" alt="{{ category.name }}"
+												class="icon-shape icon-sm rounded"
+												style="object-fit:cover;width:50px;height:50px;">
+											{% else %}
+											<img src="{% static 'assets/images/icons/placeholder-img.jpg' %}"
+												class="icon-shape icon-sm rounded"
+												style="object-fit:cover;width:50px;height:50px;">
+											{% endif %}
 										</td>
-										<td>
-											<a href="#!"><img src="../assets/images/icons/snacks.svg" alt=""
-													class="icon-shape icon-sm" /></a>
-										</td>
-										<td><a href="#" class="text-reset">Snack & Munchies</a></td>
-										<td>12</td>
+										<td class="fw-semibold">
+											{{ category.name }}
 
-										<td>
-											<div class="mb-3 col-lg-6">
-												<select class="form-select">
-													<option selected>Category Name</option>
-													<option value="Dairy, Bread & Eggs">Dairy, Bread & Eggs</option>
-													<option value="Snacks & Munchies">Snacks & Munchies</option>
-													<option value="Fruits & Vegetables">Fruits & Vegetables</option>
-												</select>
-											</div>
+											{% if category.subcat_count > 0 %}
+											<button class="btn btn-sm btn-light border-0 toggle-subcat ms-2"
+												data-target="#subcat-{{ category.id }}" title="Show Subcategories">
+												<i class="bi bi-chevron-down"></i>
+												<span class="badge bg-secondary text-white">{{ category.subcat_count }}</span>
+											</button>
+											{% endif %}
 										</td>
-
+										<td>{{ category.slug }}</td>
+										<td class="text-truncate" style="max-width:200px;"
+											title="{{ category.description }}">
+											{{ category.description }}
+										</td>
+										<td>{{ category.created_at|date:"Y-m-d" }}</td>
 										<td>
 											<div class="dropdown">
 												<a href="#" class="text-reset" data-bs-toggle="dropdown"
@@ -112,42 +117,126 @@
 												</a>
 												<ul class="dropdown-menu">
 													<li>
-														<a class="dropdown-item" href="#">
-															<i class="bi bi-trash me-3"></i>
-															Delete
+														<a class="dropdown-item text-danger"
+															href="{% url 'delete-category' category.id %}"
+															onclick="return confirm('Delete this category and all its subcategories?');">
+															<i class="bi bi-trash me-2"></i>Delete
 														</a>
 													</li>
 													<li>
-														<a class="dropdown-item" href="#">
-															<i class="bi bi-pencil-square me-3"></i>
-															Edit
+														<a class="dropdown-item"
+															href="{% url 'edit-category' category.id %}">
+															<i class="bi bi-pencil-square me-2"></i>Edit
+														</a>
+													</li>
+													<li>
+														<a class="dropdown-item"
+															href="{% url 'add-subcategory' %}?parent={{ category.id }}">
+															<i class="bi bi-plus-circle me-2"></i>Add Subcategory
 														</a>
 													</li>
 												</ul>
 											</div>
 										</td>
 									</tr>
-									
+
+									<!-- ✅ Collapsible subcategories -->
+									<tr id="subcat-{{ category.id }}" class="subcategory-row"
+										style="display: none; background: #f8f9fa;">
+										<td colspan="7" class="p-0">
+											<div class="p-3">
+												{% if subcategories %}
+												<table class="table mb-0 table-sm align-middle">
+													<thead class="bg-light">
+														<tr>
+															<th style="width: 30px;"></th>
+															<th>Name</th>
+															<th>Slug</th>
+															<th>Description</th>
+															<th>Actions</th>
+														</tr>
+													</thead>
+													<tbody>
+														{% for sub in subcategories %}
+														{% if sub.category_id == category.id %}
+														<tr>
+															<td>↳</td>
+															<td>{{ sub.name }}</td>
+															<td>{{ sub.slug }}</td>
+															<td class="text-truncate" style="max-width:200px;"
+																title="{{ sub.description }}">
+																{{ sub.description }}
+															</td>
+															<td>
+																<a href="{% url 'edit-subcategory' sub.id %}"
+																	class="btn btn-sm btn-outline-success me-1">
+																	<i class="bi bi-pencil"></i>
+																</a>
+																<a href="{% url 'delete-subcategory' sub.id %}"
+																	class="btn btn-sm btn-outline-danger"
+																	onclick="return confirm('Delete this subcategory?');">
+																	<i class="bi bi-trash"></i>
+																</a>
+															</td>
+														</tr>
+														{% endif %}
+														{% endfor %}
+													</tbody>
+												</table>
+												{% else %}
+												<p class="text-muted m-2">No subcategories found.</p>
+												{% endif %}
+											</div>
+										</td>
+									</tr>
+									{% endfor %}
+									{% else %}
+									<tr>
+										<td colspan="7" class="text-center text-muted py-4">
+											No categories found. <a href="{% url 'add-category' %}"
+												class="text-primary fw-semibold">Add one</a>.
+										</td>
+									</tr>
+									{% endif %}
 								</tbody>
+
 							</table>
 						</div>
 					</div>
+
 					<div
 						class="border-top d-flex justify-content-between align-items-md-center px-6 py-6 flex-md-row flex-column gap-4">
-						<span>Showing 1 to 8 of 12 entries</span>
-						<nav>
-							<ul class="pagination mb-0">
-								<li class="page-item disabled"><a class="page-link" href="#!">Previous</a></li>
-								<li class="page-item"><a class="page-link active" href="#!">1</a></li>
-								<li class="page-item"><a class="page-link" href="#!">2</a></li>
-								<li class="page-item"><a class="page-link" href="#!">3</a></li>
-								<li class="page-item"><a class="page-link" href="#!">Next</a></li>
-							</ul>
-						</nav>
+						<span>Showing {{ categories|length }} categories</span>
 					</div>
+
 				</div>
 			</div>
 		</div>
 	</div>
 </main>
+
+<!-- ✅ Smooth Toggle Script -->
+<script>
+	document.addEventListener("DOMContentLoaded", () => {
+		const toggles = document.querySelectorAll(".toggle-subcat");
+		toggles.forEach(btn => {
+			btn.addEventListener("click", function () {
+				const targetId = this.getAttribute("data-target");
+				const targetRow = document.querySelector(targetId);
+				const icon = this.querySelector("i");
+
+				if (targetRow.style.display === "none") {
+					targetRow.style.display = "";
+					icon.classList.remove("bi-chevron-down");
+					icon.classList.add("bi-chevron-up");
+				} else {
+					targetRow.style.display = "none";
+					icon.classList.remove("bi-chevron-up");
+					icon.classList.add("bi-chevron-down");
+				}
+			});
+		});
+	});
+</script>
+
 {% endblock %}

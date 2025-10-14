@@ -24,7 +24,21 @@ def normalize_phone(raw):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def index(request):
     carousels = db.selectall("SELECT * FROM carousel_images ORDER BY id DESC")
-    return render(request, "index.html", {"carousels": carousels})
+    # ✅ Fetch all categories
+    categories = db.selectall("SELECT * FROM categories ORDER BY id DESC")
+
+    # ✅ Split categories into chunks of 10 for sections
+    def chunk_list(data, chunk_size):
+        return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+    category_groups = chunk_list(categories, 10)
+
+    # ✅ Only first 10 categories shown on home
+    first_10_categories = categories[:10]
+    
+    return render(request, "index.html", {"carousels": carousels,"categories": categories,
+        "category_groups": category_groups,
+        "first_10_categories": first_10_categories})
 
 def about(request):
     return render(request, 'about.html')
@@ -368,14 +382,192 @@ def edit_carousel(request, id):
 
 
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def categories(request):
-    return render(request, 'superadmin/categories.html')
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    categories = db.selectall("SELECT * FROM categories ORDER BY id DESC")
+    subcategories = db.selectall("SELECT * FROM subcategories ORDER BY id DESC")
+
+    # ✅ Count subcategories per category
+    for cat in categories:
+        cat["subcat_count"] = sum(1 for sub in subcategories if sub["category_id"] == cat["id"])
+
+    return render(request, "superadmin/categories.html", {
+        "categories": categories,
+        "subcategories": subcategories,
+    })
+
+
 
 def add_category(request):
-    return render(request, 'superadmin/add-category.html')
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
 
-def add_subcategory(request):   
-    return render(request, 'superadmin/add- Subcategory.html')
+    if request.method == "POST":
+        category_name = request.POST.get("category_name", "")
+        slug = request.POST.get("slug", "")
+        description = request.POST.get("description", "")
+        meta_title = request.POST.get("meta_title", "")
+        meta_description = request.POST.get("meta_description", "")
+        image_file = request.FILES.get("image")
+
+        if not category_name or not image_file:
+            messages.error(request, "Please fill all required fields.")
+            return redirect("add-category")
+
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "categories"))
+        filename = get_random_string(8) + "_" + image_file.name
+        saved_name = fs.save(filename, image_file)
+        image_path = f"categories/{saved_name}"
+
+        db.insert("""
+            INSERT INTO categories (name, slug, description, image, meta_title, meta_description)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (category_name, slug, description, image_path, meta_title, meta_description))
+
+        messages.success(request, f"Category '{category_name}' added successfully!")
+        return redirect("categories")
+
+    return render(request, "superadmin/add-category.html")
+
+
+def edit_category(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    category = db.selectone("SELECT * FROM categories WHERE id=%s", (id,))
+    if not category:
+        messages.error(request, "Category not found.")
+        return redirect("categories")
+
+    if request.method == "POST":
+        category_name = request.POST.get("category_name", "")
+        slug = request.POST.get("slug", "")
+        description = request.POST.get("description", "")
+        meta_title = request.POST.get("meta_title", "")
+        meta_description = request.POST.get("meta_description", "")
+        image_file = request.FILES.get("image")
+
+        image_path = category["image"]
+        if image_file:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "categories"))
+            filename = get_random_string(8) + "_" + image_file.name
+            saved_name = fs.save(filename, image_file)
+            image_path = f"categories/{saved_name}"
+
+        db.update("""
+            UPDATE categories
+            SET name=%s, slug=%s, description=%s, image=%s, meta_title=%s, meta_description=%s
+            WHERE id=%s
+        """, (category_name, slug, description, image_path, meta_title, meta_description, id))
+
+        messages.success(request, "Category updated successfully!")
+        return redirect("categories")
+
+    return render(request, "superadmin/edit-category.html", {"category": category})
+
+
+def delete_category(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    # Fetch category
+    category = db.selectone("SELECT * FROM categories WHERE id=%s", (id,))
+    if not category:
+        messages.error(request, "Category not found.")
+        return redirect("categories")
+
+    # Delete image file
+    if category["image"]:
+        image_path = os.path.join(settings.MEDIA_ROOT, category["image"])
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+    # Delete category (this automatically deletes subcategories because of ON DELETE CASCADE)
+    db.delete("DELETE FROM categories WHERE id=%s", (id,))
+
+    messages.success(request, f"Category '{category['name']}' and all its subcategories deleted successfully.")
+    return redirect("categories")
+
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def add_subcategory(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    # Fetch all parent categories
+    categories = db.selectall("SELECT id, name FROM categories ORDER BY name ASC")
+
+    if request.method == "POST":
+        subcategory_name = request.POST.get("subcategory_name", "")
+        slug = request.POST.get("slug", "")
+        description = request.POST.get("description", "")
+        meta_title = request.POST.get("meta_title", "")
+        meta_description = request.POST.get("meta_description", "")
+        category_id = request.POST.get("category_id")
+
+        if not subcategory_name or not category_id:
+            messages.error(request, "Please fill all required fields.")
+            return redirect("add-subcategory")
+
+        db.insert("""
+            INSERT INTO subcategories (category_id, name, slug, description, meta_title, meta_description)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (category_id, subcategory_name, slug, description, meta_title, meta_description))
+
+        messages.success(request, f"Subcategory '{subcategory_name}' added successfully!")
+        return redirect("categories")
+
+    return render(request, "superadmin/add- Subcategory.html", {"categories": categories})
+
+def edit_subcategory(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    sub = db.selectone("SELECT * FROM subcategories WHERE id=%s", (id,))
+    if not sub:
+        messages.error(request, "Subcategory not found.")
+        return redirect("categories")
+
+    categories = db.selectall("SELECT id, name FROM categories ORDER BY name ASC")
+
+    if request.method == "POST":
+        name = request.POST.get("subcategory_name", "")
+        slug = request.POST.get("slug", "")
+        description = request.POST.get("description", "")
+        meta_title = request.POST.get("meta_title", "")
+        meta_description = request.POST.get("meta_description", "")
+        category_id = request.POST.get("category_id")
+
+        db.update("""
+            UPDATE subcategories
+            SET category_id=%s, name=%s, slug=%s, description=%s, meta_title=%s, meta_description=%s
+            WHERE id=%s
+        """, (category_id, name, slug, description, meta_title, meta_description, id))
+
+        messages.success(request, "Subcategory updated successfully!")
+        return redirect("categories")
+
+    return render(request, "superadmin/edit-subcategory.html", {"subcategory": sub, "categories": categories})
+
+
+def delete_subcategory(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    sub = db.selectone("SELECT * FROM subcategories WHERE id=%s", (id,))
+    if not sub:
+        messages.error(request, "Subcategory not found.")
+        return redirect("categories")
+
+    db.delete("DELETE FROM subcategories WHERE id=%s", (id,))
+    messages.success(request, f"Subcategory '{sub['name']}' deleted successfully.")
+    return redirect("categories")
+
+
 
 def products(request):
     return render(request, 'superadmin/products.html')

@@ -27,9 +27,17 @@ urlpatterns = [
     path('adminlogout/', views.adminlogout, name='adminlogout'),
     path('admin-forgot-password/', views.admin_forgot_password, name='admin-forgot-password'),
     path('admin-reset-verify/', views.admin_reset_verify, name='admin-reset-verify'),
+    
+    # Category URLs
     path('categories/', views.categories, name='categories'),
     path('add-category/', views.add_category, name='add-category'),
     path('add-subcategory/', views.add_subcategory, name='add-subcategory'),
+    path("edit-category/<int:id>/", views.edit_category, name="edit-category"),
+    path("delete-category/<int:id>/", views.delete_category, name="delete-category"),
+    path("edit-subcategory/<int:id>/", views.edit_subcategory, name="edit-subcategory"),
+    path("delete-subcategory/<int:id>/", views.delete_subcategory, name="delete-subcategory"),
+
+    
     path('products/', views.products, name='products'),
     path('add-productcategory/', views.add_productcategory, name='add-productcategory'),
     path('add-products/', views.add_products, name='add-products'),
@@ -41,6 +49,8 @@ urlpatterns = [
     path('edit-admin/<int:id>/', views.edit_admin, name='edit-admin'),
     path('delete-admin/<int:id>/', views.delete_admin, name='delete-admin'),
     path('admin-register/', views.admin_register, name='admin-register'),
+    
+    # Carousel Image URLs
     path('carousel-images/', views.carousel_images, name='carousel-images'),
     path('add-carousel-image/', views.add_carousel_image, name='add-carousel-image'),
     path('edit-carousel/<int:id>/', views.edit_carousel, name='edit-carousel'),

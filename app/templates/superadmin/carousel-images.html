@@ -100,7 +100,7 @@
 										<td style="max-width:300px;">
 											<span class="text-truncate d-block"
 												style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-												{{ img.description|striptags|truncatechars:70 }}
+												{{ img.description|safe }}
 											</span>
 										</td>
 

@@ -59,11 +59,12 @@
 
                         <div class="mb-3 col-lg-12">
                             <label class="form-label">Description</label>
-                            <div id="editor" class="border rounded bg-white p-2" style="min-height:200px;">{{
-                                carousel.description|safe }}</div>
-                            <input type="hidden" name="description" id="hiddenDescription">
+                            <textarea name="description" class="form-control" rows="5"
+                                required>{{ carousel.description }}</textarea>
+
+
                         </div>
-                        
+
                         <div class="col-lg-12">
                             <input type="submit" class="btn btn-primary" value="Update Carousel">
                             <a href="{% url 'carousel-images' %}" class="btn btn-secondary ms-2">Cancel</a>
@@ -74,6 +75,7 @@
         </div>
     </div>
 </main>
+
 
 
 {% endblock %}
