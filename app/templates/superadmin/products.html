@@ -42,7 +42,7 @@
 					 {% for category in categories %}
 					<div class="col">
 						
-						<a href="{% url 'add-productcategory' %}" class="text-decoration-none text-inherit">
+						<a href="{% url 'add-productcategory' category.id %}" class="text-decoration-none text-inherit">
 							<!-- card -->
 							<div class="card card-product">
 								<div class="card-body text-center py-8">

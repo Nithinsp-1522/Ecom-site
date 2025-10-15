@@ -15,6 +15,7 @@ from django.utils.crypto import get_random_string
 from django.core.files.storage import FileSystemStorage
 from datetime import datetime
 from django.shortcuts import get_object_or_404
+from math import ceil
 
 # Normalize phone numbers
 def normalize_phone(raw):
@@ -155,13 +156,13 @@ def rewards(request):
 
 
 # Admin views
+
 def get_admin_context(request):
-    """Return the current admin info for templates"""
+    """Return current admin info for templates"""
     admin = None
     if "admin_id" in request.session:
         admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
     return {"admin": admin}
-
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_home(request):
@@ -279,6 +280,7 @@ def carousel_images(request):
         return redirect("admin-home")
     
     data = db.selectall("SELECT * FROM carousel_images ORDER BY id DESC")
+    
     return render(request, "superadmin/carousel-images.html", {"images": data})
 
 
@@ -314,7 +316,7 @@ def add_carousel_image(request):
 
         messages.success(request, f"Carousel image '{carousel_name}' added successfully!")
         return redirect("carousel-images")
-
+    
     return render(request, "superadmin/add-carousel-image.html")
 
 # ✅ Delete Carousel
@@ -340,6 +342,8 @@ def delete_carousel(request, id):
 
     db.delete("DELETE FROM carousel_images WHERE id=%s", (id,))
     messages.success(request, f"Carousel '{item['title']}' deleted successfully.")
+    
+
     return redirect("carousel-images")
 
 
@@ -611,11 +615,213 @@ def products(request):
 
     return render(request, 'superadmin/products.html', {"categories": categories})
 
-def add_productcategory(request):
-    return render(request, 'superadmin/Addproductscat.html')
 
-def add_products(request):
-    return render(request, 'superadmin/add-product.html')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def add_productcategory(request, category_id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    category = db.selectone("SELECT * FROM categories WHERE id=%s", (category_id,))
+    if not category:
+        messages.error(request, "Category not found.")
+        return redirect("products")
+
+    # ✅ Fix: request.GET is always available here
+    page_str = request.GET.get("page", "1") or "1"
+    try:
+        page = int(page_str)
+    except ValueError:
+        page = 1
+
+    limit = 10
+    offset = (page - 1) * limit
+
+    total_row = db.selectone("SELECT COUNT(*) AS count FROM products WHERE category_id=%s", (category_id,))
+    total = total_row["count"] if total_row else 0
+    total_pages = ceil(total / limit) if total > 0 else 1
+
+    products = db.selectall("""
+        SELECT p.*, 
+               c.name AS category_name, 
+               s.name AS subcategory_name,
+               (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN subcategories s ON p.subcategory_id = s.id
+        WHERE p.category_id=%s
+        ORDER BY p.id DESC
+        LIMIT %s OFFSET %s
+    """, (category_id, limit, offset))
+
+    context = {
+        "category": category,
+        "products": products,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+    }
+    return render(request, "superadmin/Addproductscat.html", context)
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def add_products(request, category_id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    category = db.selectone("SELECT * FROM categories WHERE id=%s", (category_id,))
+    subcategories = db.selectall("SELECT * FROM subcategories WHERE category_id=%s ORDER BY name ASC", (category_id,))
+
+    if not category:
+        messages.error(request, "Invalid category.")
+        return redirect("products")
+
+    # Product limit check
+    product_count = db.selectone("SELECT COUNT(*) as count FROM products WHERE admin_id=%s", (admin_id,))
+    if not admin["is_superadmin"] and product_count["count"] >= 25:
+        messages.warning(request, "You’ve reached your product limit. Please request upgrade or approval.")
+        return redirect("products")
+
+    if request.method == "POST":
+        title = request.POST.get("title", "")
+        subcategory_id = request.POST.get("subcategory", "")
+        price = request.POST.get("price", "0")
+        sale_price = request.POST.get("sale_price", "0")
+        stock = request.POST.get("stock", "0")
+        description = request.POST.get("description", "")
+        meta_title = request.POST.get("meta_title", "")
+        meta_description = request.POST.get("meta_description", "")
+        is_vip = request.POST.get("is_vip") == "on"
+
+        approved = admin["is_superadmin"]
+        pending_approval = not admin["is_superadmin"]
+
+        db.insert("""
+            INSERT INTO products 
+            (title, category_id, subcategory_id, price, sale_price, stock, description, meta_title, meta_description, admin_id, approved, pending_approval)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            title, category_id, subcategory_id, price, sale_price, stock,
+            description, meta_title, meta_description, admin_id, approved, pending_approval
+        ))
+
+        product = db.selectone("SELECT * FROM products ORDER BY id DESC LIMIT 1")
+
+        files = request.FILES.getlist("images")
+        if files:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
+            for img in files:
+                filename = get_random_string(8) + "_" + img.name
+                fs.save(filename, img)
+                db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (product["id"], f"products/{filename}"))
+
+        # Save custom fields
+        field_names = request.POST.getlist("field_name[]")
+        field_values = request.POST.getlist("field_value[]")
+        for name, value in zip(field_names, field_values):
+            if name and value:
+                db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)", (product["id"], name, value))
+
+        messages.success(request, f"Product '{title}' added successfully to {category['name']}")
+        return redirect("add-productcategory", category_id=category_id)
+
+    context = {
+        "category": category,
+        "subcategories": subcategories,
+        "admin": admin,
+    }
+    return render(request, "superadmin/add-product.html", context)
+
+def delete_product(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (id,))
+    if not product:
+        messages.error(request, "Product not found.")
+        return redirect("products")
+
+    # Delete images from media
+    images = db.selectall("SELECT image FROM product_images WHERE product_id=%s", (id,))
+    for img in images:
+        path = os.path.join(settings.MEDIA_ROOT, img["image"])
+        if os.path.exists(path):
+            os.remove(path)
+
+    db.delete("DELETE FROM products WHERE id=%s", (id,))
+    messages.success(request, f"Product '{product['title']}' deleted successfully.")
+    return redirect("add-productcategory", category_id=product["category_id"])
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def edit_product(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    # ✅ Fetch the product
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (id,))
+    if not product:
+        messages.error(request, "Product not found.")
+        return redirect("products")
+
+    # ✅ Fetch category + subcategories for dropdowns
+    category = db.selectone("SELECT * FROM categories WHERE id=%s", (product["category_id"],))
+    subcategories = db.selectall("SELECT id, name FROM subcategories WHERE category_id=%s", (product["category_id"],))
+
+    # ✅ Fetch custom fields (attributes)
+    attributes = db.selectall("SELECT * FROM product_attributes WHERE product_id=%s", (id,))
+
+    # ✅ Fetch product images
+    images = db.selectall("SELECT * FROM product_images WHERE product_id=%s", (id,))
+
+    if request.method == "POST":
+        title = request.POST.get("title", "")
+        subcategory_id = request.POST.get("subcategory", "")
+        price = request.POST.get("price", "0")
+        sale_price = request.POST.get("sale_price", "0")
+        stock = request.POST.get("stock", "0")
+        description = request.POST.get("description", "")
+        meta_title = request.POST.get("meta_title", "")
+        meta_description = request.POST.get("meta_description", "")
+
+        # ✅ Update product
+        db.update("""
+            UPDATE products
+            SET title=%s, subcategory_id=%s, price=%s, sale_price=%s, stock=%s, description=%s, 
+                meta_title=%s, meta_description=%s
+            WHERE id=%s
+        """, (title, subcategory_id, price, sale_price, stock, description, meta_title, meta_description, id))
+
+        # ✅ Delete old custom fields, then re-insert
+        db.delete("DELETE FROM product_attributes WHERE product_id=%s", (id,))
+        field_names = request.POST.getlist("field_name[]")
+        field_values = request.POST.getlist("field_value[]")
+        for name, value in zip(field_names, field_values):
+            if name and value:
+                db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)", (id, name, value))
+
+        # ✅ Handle new uploaded images
+        new_images = request.FILES.getlist("images")
+        if new_images:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
+            for img in new_images:
+                filename = get_random_string(8) + "_" + img.name
+                fs.save(filename, img)
+                db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (id, f"products/{filename}"))
+
+        messages.success(request, f"Product '{title}' updated successfully!")
+        return redirect("add-productcategory", category_id=product["category_id"])
+
+    context = {
+        "product": product,
+        "category": category,
+        "subcategories": subcategories,
+        "attributes": attributes,
+        "images": images,
+    }
+    return render(request, "superadmin/edit-product.html", context)
+
+
+
 
 def approve_product(request):
     

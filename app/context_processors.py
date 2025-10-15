@@ -10,3 +10,10 @@ def category_context(request):
         "categories_all": categories,
         "subcategories": subcategories,
     }
+
+def admin_context(request):
+    """Make admin info available globally in all admin templates"""
+    if "admin_id" in request.session:
+        admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+        return {"admin": admin}
+    return {"admin": None}
