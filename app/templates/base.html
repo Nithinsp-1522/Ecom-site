@@ -230,6 +230,7 @@
                   </form>
 
                </div>
+               <!-- ✅ MOBILE VIEW: collapsible “All Categories” -->
                <div class="d-block d-lg-none mb-4">
                   <a class="btn btn-dark w-100 d-flex justify-content-center align-items-center"
                      data-bs-toggle="collapse" href="#collapseExample" role="button" aria-expanded="false"
@@ -246,15 +247,43 @@
                      </span>
                      All Categories
                   </a>
-                  <div class="collapse mt-2" id="collapseExample">
-                     <div class="card card-body">
-                        <ul class="mb-0 list-unstyled">
-                           <li><a class="dropdown-item" href="shop-grid.html">Dairy, Bread & Eggs</a></li>
 
+                  <div class="collapse mt-2" id="collapseExample">
+                     <div class="card card-body" style="max-height:400px; overflow-y:auto;">
+                        {% if categories_all %}
+                        <ul class="list-unstyled mb-0">
+                           {% for category in categories_all %}
+                           <li class="mb-2">
+                              <a class="dropdown-item fw-semibold text-dark"
+                                 href="#">
+                                 {{ category.name }}
+                              </a>
+
+                              {% if subcategories %}
+                              {% for sub in subcategories %}
+                              {% if sub.category_id == category.id %}
+                              <ul class="list-unstyled ms-3 mb-2">
+                                 <li>
+                                    <a class="dropdown-item small text-muted"
+                                       href="#">
+                                       {{ sub.name }}
+                                    </a>
+                                 </li>
+                              </ul>
+                              {% endif %}
+                              {% endfor %}
+                              {% endif %}
+                           </li>
+                           {% endfor %}
                         </ul>
+                        {% else %}
+                        <p class="text-muted small mb-0">No categories available</p>
+                        {% endif %}
                      </div>
                   </div>
                </div>
+
+               <!-- ✅ DESKTOP VIEW: dropdown “All Categories” -->
                <div class="dropdown me-3 d-none d-lg-block">
                   <button class="btn btn-orange px-6" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown"
                      aria-expanded="false">
@@ -270,11 +299,42 @@
                      </span>
                      All Categories
                   </button>
-                  <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
-                     <li><a class="dropdown-item" href="shop-grid.html">Dairy, Bread & Eggs</a></li>
 
+                  <ul class="dropdown-menu p-2" aria-labelledby="dropdownMenuButton1"
+                     style="max-height:400px; overflow-y:auto;">
+                     {% if categories_all %}
+                     {% for category in categories_all %}
+                     <li>
+                        <a class="dropdown-item fw-semibold text-dark"
+                           href="#">
+                           {{ category.name }}
+                        </a>
+
+                        {% if subcategories %}
+                        {% for sub in subcategories %}
+                        {% if sub.category_id == category.id %}
+                        <ul class="list-unstyled ms-3 mb-1">
+                           <li>
+                              <a class="dropdown-item small text-muted"
+                                 href="#">
+                                 {{ sub.name }}
+                              </a>
+                           </li>
+                        </ul>
+                        {% endif %}
+                        {% endfor %}
+                        {% endif %}
+                     </li>
+                     <li>
+                        <hr class="dropdown-divider my-1">
+                     </li>
+                     {% endfor %}
+                     {% else %}
+                     <li><a class="dropdown-item text-muted" href="#">No categories found</a></li>
+                     {% endif %}
                   </ul>
                </div>
+
                <div>
                   <ul class="navbar-nav align-items-center navbar-offcanvas-color">
                      <li class="nav-item">

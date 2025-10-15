@@ -11,6 +11,7 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('userlogin/', views.userlogin, name='userlogin'),
     path('userlogout/', views.userlogout, name='userlogout'),
+    path('user-categories', views.user_categories, name='user-categories'),
     
     # User URLs
     path('profile/', views.profile, name='profile'),
@@ -48,7 +49,6 @@ urlpatterns = [
     path('add-sellers/', views.add_sellers, name='add-sellers'),
     path('edit-admin/<int:id>/', views.edit_admin, name='edit-admin'),
     path('delete-admin/<int:id>/', views.delete_admin, name='delete-admin'),
-    path('admin-register/', views.admin_register, name='admin-register'),
     
     # Carousel Image URLs
     path('carousel-images/', views.carousel_images, name='carousel-images'),

@@ -147,14 +147,20 @@
 							</li>
 							<li class="dropdown ms-4">
 								<a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-									<img src="{% static 'assets/images/avatar/avatar-1.jpg' %}" alt=""
+									<img src="/media/{{ admin.photo }}" alt=""
 										class="avatar avatar-md rounded-circle" />
 								</a>
 
 								<div class="dropdown-menu dropdown-menu-end p-0">
 									<div class="lh-1 px-5 py-4 border-bottom">
-										<h5 class="mb-1 h6">Super Admin</h5>
-										<small>admindemo@email.com</small>
+										<h5 class="mb-1 h6">{{ admin.username }}</h5>
+										<small>{{ admin.email }}</small>
+										<br><br>
+										{% if admin.is_superadmin %}
+										Super Admin
+										{% else %}
+										Admin
+										{% endif %}
 									</div>
 
 									<ul class="list-unstyled px-2 py-3">
@@ -201,6 +207,7 @@
 								<span class="nav-label">Store Managements</span>
 							</li>
 
+							{% if admin.is_superadmin %}
 							<li class="nav-item">
 								<a class="nav-link collapsed " href="#" data-bs-toggle="collapse"
 									data-bs-target="#navCategoriesCategories" aria-expanded="false"
@@ -223,6 +230,7 @@
 									</ul>
 								</div>
 							</li>
+							{% endif %}
 
 							<li class="nav-item">
 								<a class="nav-link collapsed " href="#" data-bs-toggle="collapse"
@@ -239,9 +247,11 @@
 											<a class="nav-link " href="{% url 'products' %}">Add Products</a>
 										</li>
 										<!-- Nav item -->
+										 {% if admin.is_superadmin %}
 										<li class="nav-item">
 											<a class="nav-link " href="{% url 'approve-product' %}">Approve Products</a>
 										</li>
+										{% endif %}
 									</ul>
 								</div>
 							</li>
@@ -254,7 +264,7 @@
 									</div>
 								</a>
 							</li>
-
+							{% if admin.is_superadmin %}
 							<li class="nav-item">
 								<a class="nav-link " href="{% url 'carousel-images' %} ">
 									<div class="d-flex align-items-center">
@@ -263,6 +273,7 @@
 									</div>
 								</a>
 							</li>
+							
 
 							<li class="nav-item">
 								<a class="nav-link " href="{% url 'sellers' %}">
@@ -272,6 +283,7 @@
 									</div>
 								</a>
 							</li>
+
 							<li class="nav-item">
 								<a class="nav-link" href="#">
 									<div class="d-flex align-items-center">
@@ -290,6 +302,7 @@
 									</div>
 								</a>
 							</li>
+							{% endif %}
 							<!-- Nav item -->
 						</ul>
 					</div>
@@ -411,6 +424,79 @@
 				</div>
 			</nav>
 
+
+			<!-- Toast Message Section (Centered + Animated + Themed for FreshCart) -->
+			{% if messages %}
+			<style>
+				/* Toast Animation */
+				@keyframes toastSlideIn {
+					from {
+						opacity: 0;
+						transform: translate(-50%, -30px);
+					}
+
+					to {
+						opacity: 1;
+						transform: translate(-50%, 0);
+					}
+				}
+
+				@keyframes toastSlideOut {
+					from {
+						opacity: 1;
+						transform: translate(-50%, 0);
+					}
+
+					to {
+						opacity: 0;
+						transform: translate(-50%, -20px);
+					}
+				}
+
+				.custom-toast {
+					animation: toastSlideIn 0.4s ease-out forwards;
+				}
+
+				.custom-toast.hide {
+					animation: toastSlideOut 0.4s ease-in forwards;
+				}
+			</style>
+
+			<div aria-live="polite" aria-atomic="true" class="position-relative">
+				<div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3"
+					style="z-index: 1055;">
+					{% for message in messages %}
+					<div class="toast custom-toast border-0 mb-2 shadow-lg rounded-3" style="min-width: 350px;
+         background-color:
+         {% if message.tags == 'success' %}#d1f3dc
+         {% elif message.tags == 'error' %}#f8d7da
+         {% elif message.tags == 'warning' %}#fff3cd
+         {% elif message.tags == 'info' %}#d1ecf1
+         {% else %}#f8f9fa{% endif %};
+         color:
+         {% if message.tags == 'success' %}#0f5132
+         {% elif message.tags == 'error' %}#842029
+         {% elif message.tags == 'warning' %}#664d03
+         {% elif message.tags == 'info' %}#055160
+         {% else %}#333{% endif %};" role="alert" aria-live="assertive" aria-atomic="true">
+						<div class="d-flex align-items-center justify-content-between px-3 py-2">
+							<div class="toast-body fw-semibold">
+								{{ message }}
+							</div>
+							<button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"
+								aria-label="Close"></button>
+						</div>
+					</div>
+					{% endfor %}
+				</div>
+			</div>
+			{% endif %}
+
+
+
+
+
+
 			{% block content %}
 
 			<!-- main wrapper -->
@@ -437,14 +523,21 @@
 	<script src="{% static 'assets/js/vendors/dropzone.js' %}"></script>
 
 	<script>
-		setTimeout(() => {
-			const alerts = document.querySelectorAll('.alert');
-			alerts.forEach(alert => {
-				const bsAlert = new bootstrap.Alert(alert);
-				bsAlert.close();
+		document.addEventListener("DOMContentLoaded", function () {
+			const toastElList = document.querySelectorAll('.toast');
+			toastElList.forEach(toastEl => {
+				const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
+				toast.show();
+
+				// Add slide-out animation before hiding
+				setTimeout(() => {
+					toastEl.classList.add('hide');
+				}, 2600); // starts fade-out slightly before auto-dismiss
 			});
-		}, 3000);
+		});
 	</script>
+
+
 
 </body>
 

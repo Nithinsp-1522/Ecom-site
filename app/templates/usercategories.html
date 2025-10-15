@@ -1,29 +1,11 @@
-{% extends "superadmin/adminbase.html" %}
+{% extends "base.html" %}
 {% load static %}
-{% block title %}Products - Superadmin{% endblock %}
+{% block title %}Categories - {% endblock %}
 {% block content %}
 
 <!-- main -->
 <main class="main-content-wrapper">
 	<div class="container">
-		<div class="row mb-8">
-			<div class="col-md-12">
-				<!-- page header -->
-				<div class="d-md-flex justify-content-between align-items-center">
-					<div>
-						<h2>Products</h2>
-						<!-- breacrumb -->
-						<nav aria-label="breadcrumb">
-							<ol class="breadcrumb mb-0">
-								<li class="breadcrumb-item"><a href="{% url 'admin-home' %}"
-										class="text-inherit">Dashboard</a></li>
-								<li class="breadcrumb-item active" aria-current="page">Product Categories</li>
-							</ol>
-						</nav>
-					</div>
-				</div>
-			</div>
-		</div>
 		<section class="my-lg-14 my-8">
 			<!-- category -->
 			<div class="container">
@@ -32,30 +14,28 @@
 					<div class="col-12">
 						<div class="mb-8">
 							<!-- heading -->
-							<h3 class="mb-0">Add Products by Category</h3>
+							<h3 class="mb-0">All Category</h3>
 						</div>
 					</div>
 				</div>
 				<!-- row -->
 				<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-6 g-6">
 					<!-- col -->
-					 {% for category in categories %}
+                     {% for category in categories %}
 					<div class="col">
-						
-						<a href="{% url 'add-productcategory' %}" class="text-decoration-none text-inherit">
+						<a href="#" class="text-decoration-none text-inherit">
 							<!-- card -->
 							<div class="card card-product">
 								<div class="card-body text-center py-8">
 									<!-- img -->
 									<img src="/media/{{ category.image }}" alt="{{ category.name }}" class="mb-3" style="width: 100%;" />
-									
 									<!-- text -->
 									<div class="text-truncate">{{ category.name }}</div>
 								</div>
 							</div>
 						</a>
 					</div>
-					{% endfor %}
+                    {% endfor %}
 				</div>
 			</div>
 		</section>

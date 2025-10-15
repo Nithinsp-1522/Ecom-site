@@ -46,6 +46,10 @@ def about(request):
 def contact(request):
     return render(request, 'contact.html')
 
+def user_categories(request):
+    categories = db.selectall("SELECT * FROM categories ORDER BY id DESC")
+    return render(request, 'usercategories.html', {"categories": categories})
+
 
 def signup(request):
     if request.method == "POST":
@@ -151,43 +155,20 @@ def rewards(request):
 
 
 # Admin views
+def get_admin_context(request):
+    """Return the current admin info for templates"""
+    admin = None
+    if "admin_id" in request.session:
+        admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    return {"admin": admin}
+
+
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_home(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
-    return render(request, 'superadmin/adminhome.html')
-
-def admin_register(request):
-    if request.method == "POST":
-        username = request.POST.get("username", "").strip()
-        email = request.POST.get("email", "").strip()
-        password = request.POST.get("password", "").strip()
-        confirm_password = request.POST.get("confirm_password", "").strip()
-
-        # Validate
-        if not username or not email or not password:
-            messages.error(request, "All fields are required.")
-            return redirect("admin-register")
-
-        if password != confirm_password:
-            messages.error(request, "Passwords do not match.")
-            return redirect("admin-register")
-
-        existing = db.selectone("SELECT * FROM adminusers WHERE username=%s OR email=%s", (username, email))
-        if existing:
-            messages.error(request, "Username or email already exists.")
-            return redirect("admin-register")
-
-        hashed_pwd = make_password(password)
-        db.insert(
-            "INSERT INTO adminusers (username, email, password, is_admin) VALUES (%s, %s, %s, %s)",
-            (username, email, hashed_pwd, True)
-        )
-
-        messages.success(request, "Admin registered successfully! Please log in.")
-        return redirect("adminlogin")
-
-    return render(request, "superadmin/adminregister.html")
+    context = get_admin_context(request)
+    return render(request, 'superadmin/adminhome.html', context)
 
 def admin_login(request):
     if request.method == "POST":
@@ -291,7 +272,12 @@ def admin_reset_verify(request):
 def carousel_images(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
-
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
+    
     data = db.selectall("SELECT * FROM carousel_images ORDER BY id DESC")
     return render(request, "superadmin/carousel-images.html", {"images": data})
 
@@ -299,6 +285,11 @@ def carousel_images(request):
 def add_carousel_image(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     if request.method == "POST":
         carousel_name = request.POST.get("carousel_name", "").strip()
@@ -330,6 +321,11 @@ def add_carousel_image(request):
 def delete_carousel(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     item = db.selectone("SELECT * FROM carousel_images WHERE id=%s", (id,))
     if not item:
@@ -351,6 +347,11 @@ def delete_carousel(request, id):
 def edit_carousel(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     carousel = db.selectone("SELECT * FROM carousel_images WHERE id=%s", (id,))
     if not carousel:
@@ -386,6 +387,11 @@ def edit_carousel(request, id):
 def categories(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     categories = db.selectall("SELECT * FROM categories ORDER BY id DESC")
     subcategories = db.selectall("SELECT * FROM subcategories ORDER BY id DESC")
@@ -404,6 +410,11 @@ def categories(request):
 def add_category(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     if request.method == "POST":
         category_name = request.POST.get("category_name", "")
@@ -436,6 +447,11 @@ def add_category(request):
 def edit_category(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     category = db.selectone("SELECT * FROM categories WHERE id=%s", (id,))
     if not category:
@@ -472,6 +488,11 @@ def edit_category(request, id):
 def delete_category(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     # Fetch category
     category = db.selectone("SELECT * FROM categories WHERE id=%s", (id,))
@@ -497,6 +518,11 @@ def delete_category(request, id):
 def add_subcategory(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     # Fetch all parent categories
     categories = db.selectall("SELECT id, name FROM categories ORDER BY name ASC")
@@ -526,6 +552,11 @@ def add_subcategory(request):
 def edit_subcategory(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     sub = db.selectone("SELECT * FROM subcategories WHERE id=%s", (id,))
     if not sub:
@@ -557,6 +588,11 @@ def edit_subcategory(request, id):
 def delete_subcategory(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     sub = db.selectone("SELECT * FROM subcategories WHERE id=%s", (id,))
     if not sub:
@@ -570,7 +606,10 @@ def delete_subcategory(request, id):
 
 
 def products(request):
-    return render(request, 'superadmin/products.html')
+    
+    categories = db.selectall("SELECT * FROM categories ORDER BY id ASC")
+
+    return render(request, 'superadmin/products.html', {"categories": categories})
 
 def add_productcategory(request):
     return render(request, 'superadmin/Addproductscat.html')
@@ -579,9 +618,21 @@ def add_products(request):
     return render(request, 'superadmin/add-product.html')
 
 def approve_product(request):
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
+    
     return render(request, 'superadmin/Approveproduct.html')
 
 def approve_product_list(request):
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
+    
     return render(request, 'superadmin/Approveproductlist.html')
 
 def order_list(request):
@@ -590,6 +641,11 @@ def order_list(request):
 def sellers(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     # Fetch all admins (you can later filter by is_admin if you have sellers too)
     data = db.selectall("SELECT * FROM adminusers ORDER BY id DESC")
@@ -603,6 +659,11 @@ def add_sellers(request):
  # ✅ clear old messages before rendering this form
     storage = messages.get_messages(request)
     storage.used = True
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
     
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -639,19 +700,26 @@ def add_sellers(request):
         hashed_pwd = make_password(password)
 
         db.insert("""
-            INSERT INTO adminusers (username, email, phone, password, is_admin, organization, address, photo, joining_date)
+            INSERT INTO adminusers (username, email, phone, password, organization, address, photo, joining_date, is_superadmin)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (name, email, phone, hashed_pwd, True, organization, address, photo_path, formatted_date))
+        """, (name, email, phone, hashed_pwd, organization, address, photo_path, formatted_date, False))
 
         messages.success(request, f"{name.capitalize()} created successfully!")
-        return redirect("add-sellers")
+        return redirect("sellers")
 
     return render(request, "superadmin/Add-Sellers.html")
 
 # ✅ DELETE ADMIN
 def delete_admin(request, id):
+    
+
     if "admin_id" not in request.session:
         return redirect("adminlogin")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     # Check admin exists
     admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (id,))
@@ -688,6 +756,11 @@ def edit_admin(request, id):
     if not admin:
         messages.error(request, "Admin not found.")
         return redirect("sellers")
+    
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not admin or not admin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
