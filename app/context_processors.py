@@ -12,8 +12,9 @@ def category_context(request):
     }
 
 def admin_context(request):
-    """Make admin info available globally in all admin templates"""
+    from . import db
     if "admin_id" in request.session:
         admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
         return {"admin": admin}
     return {"admin": None}
+    

@@ -17,6 +17,7 @@ from datetime import datetime
 from django.shortcuts import get_object_or_404
 from math import ceil
 
+
 # Normalize phone numbers
 def normalize_phone(raw):
     """Keep only digits (works for +91, spaces, etc.)"""
@@ -157,19 +158,12 @@ def rewards(request):
 
 # Admin views
 
-def get_admin_context(request):
-    """Return current admin info for templates"""
-    admin = None
-    if "admin_id" in request.session:
-        admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
-    return {"admin": admin}
-
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_home(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
-    context = get_admin_context(request)
-    return render(request, 'superadmin/adminhome.html', context)
+    return render(request, 'superadmin/adminhome.html')
+
 
 def admin_login(request):
     if request.method == "POST":
