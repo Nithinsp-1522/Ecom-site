@@ -12,6 +12,9 @@ urlpatterns = [
     path('userlogin/', views.userlogin, name='userlogin'),
     path('userlogout/', views.userlogout, name='userlogout'),
     path('user-categories', views.user_categories, name='user-categories'),
+    path('category/<int:category_id>/', views.category_products, name='category-products'),
+    path('category-products/', views.category_products, name='category-products'),
+    path("product-quickview/<int:product_id>/", views.product_quickview, name="product-quickview"),
     
     # User URLs
     path('profile/', views.profile, name='profile'),

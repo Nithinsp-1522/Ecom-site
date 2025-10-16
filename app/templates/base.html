@@ -255,9 +255,10 @@
                            {% for category in categories_all %}
                            <li class="mb-2">
                               <a class="dropdown-item fw-semibold text-dark"
-                                 href="#">
+                                 href="{% url 'category-products' category.id %}">
                                  {{ category.name }}
                               </a>
+
 
                               {% if subcategories %}
                               {% for sub in subcategories %}
@@ -265,9 +266,10 @@
                               <ul class="list-unstyled ms-3 mb-2">
                                  <li>
                                     <a class="dropdown-item small text-muted"
-                                       href="#">
+                                       href="{% url 'category-products' sub.category_id %}?sub={{ sub.id }}">
                                        {{ sub.name }}
                                     </a>
+
                                  </li>
                               </ul>
                               {% endif %}
@@ -305,8 +307,7 @@
                      {% if categories_all %}
                      {% for category in categories_all %}
                      <li>
-                        <a class="dropdown-item fw-semibold text-dark"
-                           href="#">
+                        <a class="dropdown-item fw-semibold text-dark" href="{% url 'category-products' category.id %}">
                            {{ category.name }}
                         </a>
 
@@ -316,9 +317,10 @@
                         <ul class="list-unstyled ms-3 mb-1">
                            <li>
                               <a class="dropdown-item small text-muted"
-                                 href="#">
+                                 href="{% url 'category-products' sub.category_id %}?sub={{ sub.id }}">
                                  {{ sub.name }}
                               </a>
+
                            </li>
                         </ul>
                         {% endif %}

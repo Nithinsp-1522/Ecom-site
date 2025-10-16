@@ -16,6 +16,7 @@ from django.core.files.storage import FileSystemStorage
 from datetime import datetime
 from django.shortcuts import get_object_or_404
 from math import ceil
+from django.core.paginator import Paginator
 
 
 # Normalize phone numbers
@@ -51,6 +52,97 @@ def contact(request):
 def user_categories(request):
     categories = db.selectall("SELECT * FROM categories ORDER BY id DESC")
     return render(request, 'usercategories.html', {"categories": categories})
+
+def category_products(request, category_id):
+    # ✅ Get category
+    category = db.selectone("SELECT * FROM categories WHERE id=%s", (category_id,))
+    if not category:
+        messages.error(request, "Category not found.")
+        return redirect("index")
+
+    # ✅ Fetch subcategories for sidebar filter
+    subcategories = db.selectall("SELECT * FROM subcategories WHERE category_id=%s ORDER BY name ASC", (category_id,))
+
+    # ✅ Sorting logic
+    sort = request.GET.get("sort", "")
+    order_by = "p.id DESC"
+    if sort == "price_low":
+        order_by = "p.price ASC"
+    elif sort == "price_high":
+        order_by = "p.price DESC"
+
+    # ✅ Pagination setup
+    page = int(request.GET.get("page", 1))
+    limit = int(request.GET.get("limit", 12))
+    offset = (page - 1) * limit
+
+    # ✅ Count total
+    count_row = db.selectone("""
+        SELECT COUNT(*) AS count 
+        FROM products p 
+        WHERE p.category_id=%s
+    """, (category_id,))
+    total = count_row["count"] if count_row else 0
+
+    # ✅ Fetch paginated products
+    products = db.selectall(f"""
+        SELECT p.*, 
+               c.name AS category_name,
+               s.name AS subcategory_name,
+               (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image
+        FROM products p
+        LEFT JOIN categories c ON p.category_id=c.id
+        LEFT JOIN subcategories s ON p.subcategory_id=s.id
+        WHERE p.category_id=%s
+        ORDER BY {order_by}
+        LIMIT %s OFFSET %s
+    """, (category_id, limit, offset))
+
+    total_pages = (total + limit - 1) // limit
+
+    # ✅ Categories for navbar
+    categories_all = db.selectall("SELECT * FROM categories ORDER BY name ASC")
+
+    context = {
+        "category": category,
+        "categories_all": categories_all,
+        "subcategories": subcategories,
+        "products": products,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "sort": sort,
+        "limit": limit,
+    }
+    return render(request, "shop-grid.html", context)
+
+from django.http import JsonResponse
+
+def product_quickview(request, product_id):
+    """Return product details + images + attributes for Quick View modal"""
+    product = db.selectone("""
+        SELECT p.*, 
+               c.name AS category_name, 
+               s.name AS subcategory_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN subcategories s ON p.subcategory_id = s.id
+        WHERE p.id=%s
+    """, (product_id,))
+
+    if not product:
+        return JsonResponse({"error": "Product not found"}, status=404)
+
+    images = db.selectall("SELECT image FROM product_images WHERE product_id=%s", (product_id,))
+    attributes = db.selectall("SELECT field_name, field_value FROM product_attributes WHERE product_id=%s", (product_id,))
+
+    return JsonResponse({
+        "product": product,
+        "images": images,
+        "attributes": attributes
+    })
+
+   
 
 
 def signup(request):
@@ -525,6 +617,12 @@ def add_subcategory(request):
     # Fetch all parent categories
     categories = db.selectall("SELECT id, name FROM categories ORDER BY name ASC")
 
+    # ✅ Capture ?parent=ID from URL
+    parent_id = request.GET.get("parent")
+    parent_category = None
+    if parent_id:
+        parent_category = db.selectone("SELECT * FROM categories WHERE id=%s", (parent_id,))
+
     if request.method == "POST":
         subcategory_name = request.POST.get("subcategory_name", "")
         slug = request.POST.get("slug", "")
@@ -545,7 +643,12 @@ def add_subcategory(request):
         messages.success(request, f"Subcategory '{subcategory_name}' added successfully!")
         return redirect("categories")
 
-    return render(request, "superadmin/add- Subcategory.html", {"categories": categories})
+    # ✅ Pass parent category data to template
+    return render(request, "superadmin/add- subcategory.html", {
+        "categories": categories,
+        "parent_category": parent_category,
+    })
+
 
 def edit_subcategory(request, id):
     if "admin_id" not in request.session:
@@ -597,9 +700,15 @@ def delete_subcategory(request, id):
         messages.error(request, "Subcategory not found.")
         return redirect("categories")
 
+    # 🧹 Delete related products first
+    db.delete("DELETE FROM products WHERE subcategory_id=%s", (id,))
+
+    # Now delete subcategory
     db.delete("DELETE FROM subcategories WHERE id=%s", (id,))
-    messages.success(request, f"Subcategory '{sub['name']}' deleted successfully.")
+
+    messages.success(request, f"Subcategory '{sub['name']}' and its products deleted successfully.")
     return redirect("categories")
+
 
 
 
@@ -689,6 +798,10 @@ def add_products(request, category_id):
 
         approved = admin["is_superadmin"]
         pending_approval = not admin["is_superadmin"]
+        
+         # ✅ Ensure subcategory is None if there are no subcategories
+        if not subcategories:
+            subcategory_id = None
 
         db.insert("""
             INSERT INTO products 

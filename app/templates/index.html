@@ -39,7 +39,7 @@
             {% for category in first_10_categories %}
             <!-- Categoty Repeat Start -->
             <div class="item">
-               <a href="pages/shop-grid.html" class="text-decoration-none text-inherit">
+               <a href="{% url 'category-products' category.id %}" class="text-decoration-none text-inherit">
                   <div class="card card-product mb-lg-4">
                      <div class="card-body text-center py-8">
                         <img src="/media/{{ category.image }}" alt="Grocery Ecommerce Template"
