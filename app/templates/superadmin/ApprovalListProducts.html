@@ -4,7 +4,7 @@
 <main class="main-content-wrapper">
    <div class="container">
       <h2>Pending Products by {{ admin_user.username }}</h2>
-      <a href="{% url 'approve-product' %}" class="btn btn-secondary mb-3">← Back to Admins</a>
+      <a href="{% url 'approval-list' %}" class="btn btn-secondary mb-3">← Back to Admins</a>
 
       {% if products %}
       <div class="table-responsive">
@@ -16,7 +16,6 @@
                   <th>Category</th>
                   <th>Price</th>
                   <th>Status</th>
-                  <th>Action</th>
                </tr>
             </thead>
             <tbody>
@@ -33,16 +32,6 @@
                         <span class="badge bg-success">Approved</span>
                      {% elif product.disapproved %}
                         <span class="badge bg-danger">Disapproved</span>
-                     {% endif %}
-                  </td>
-                  <td>
-                     {% if product.pending_approval %}
-                        <a href="{% url 'approve-product-approve' product.id %}" class="btn btn-success btn-sm me-2">Approve</a>
-                        <a href="{% url 'approve-product-disapprove' product.id %}" class="btn btn-danger btn-sm">Disapprove</a>
-                     {% elif product.approved %}
-                        <span class="text-success">✔ Approved</span>
-                     {% elif product.disapproved %}
-                        <span class="text-danger">✖ Disapproved</span>
                      {% endif %}
                   </td>
                </tr>

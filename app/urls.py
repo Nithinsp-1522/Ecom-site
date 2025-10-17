@@ -14,7 +14,6 @@ urlpatterns = [
     path('user-categories', views.user_categories, name='user-categories'),
     path('category/<int:category_id>/', views.category_products, name='category-products'),
     path('category-products/', views.category_products, name='category-products'),
-    path("product-quickview/<int:product_id>/", views.product_quickview, name="product-quickview"),
     
     # User URLs
     path('profile/', views.profile, name='profile'),
@@ -45,10 +44,16 @@ urlpatterns = [
     path('products/', views.products, name='products'),
     path('add-productcategory/<int:category_id>/', views.add_productcategory, name='add-productcategory'),
     path('add-products/<int:category_id>/', views.add_products, name='add-products'),
-    path('approve-product/', views.approve_product, name='approve-product'),
-    path('approve-product-list/', views.approve_product_list, name='approve-product-list'),
+    path("approve-product/", views.approve_product, name="approve-product"),
+    path("approve-product-list/<int:admin_id>/", views.approve_product_list, name="approve-product-list"),
+    path("approve-product-approve/<int:product_id>/", views.approve_product_action, name="approve-product-approve"),
+    path("approve-product-disapprove/<int:product_id>/", views.disapprove_product_action, name="approve-product-disapprove"),
+    # Approval list pages
+    path("approval-list/", views.approval_list, name="approval-list"),
+    path("approval-list-products/<int:admin_id>/", views.approval_list_products, name="approval-list-products"),
     path('edit-product/<int:id>/', views.edit_product, name='edit-product'),
     path('delete-product/<int:id>/', views.delete_product, name='delete-product'),
+
     
     
     path('order-list/', views.order_list, name='order-list'),

@@ -80,7 +80,7 @@ def category_products(request, category_id):
     count_row = db.selectone("""
         SELECT COUNT(*) AS count 
         FROM products p 
-        WHERE p.category_id=%s
+        WHERE p.category_id=%s AND p.approved=1 AND p.pending_approval=0 AND p.disapproved=0
     """, (category_id,))
     total = count_row["count"] if count_row else 0
 
@@ -93,7 +93,7 @@ def category_products(request, category_id):
         FROM products p
         LEFT JOIN categories c ON p.category_id=c.id
         LEFT JOIN subcategories s ON p.subcategory_id=s.id
-        WHERE p.category_id=%s
+        WHERE p.category_id=%s AND p.approved=1 AND p.pending_approval=0 AND p.disapproved=0
         ORDER BY {order_by}
         LIMIT %s OFFSET %s
     """, (category_id, limit, offset))
@@ -117,33 +117,6 @@ def category_products(request, category_id):
     return render(request, "shop-grid.html", context)
 
 from django.http import JsonResponse
-
-def product_quickview(request, product_id):
-    """Return product details + images + attributes for Quick View modal"""
-    product = db.selectone("""
-        SELECT p.*, 
-               c.name AS category_name, 
-               s.name AS subcategory_name
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN subcategories s ON p.subcategory_id = s.id
-        WHERE p.id=%s
-    """, (product_id,))
-
-    if not product:
-        return JsonResponse({"error": "Product not found"}, status=404)
-
-    images = db.selectall("SELECT image FROM product_images WHERE product_id=%s", (product_id,))
-    attributes = db.selectall("SELECT field_name, field_value FROM product_attributes WHERE product_id=%s", (product_id,))
-
-    return JsonResponse({
-        "product": product,
-        "images": images,
-        "attributes": attributes
-    })
-
-   
-
 
 def signup(request):
     if request.method == "POST":
@@ -719,42 +692,51 @@ def products(request):
     return render(request, 'superadmin/products.html', {"categories": categories})
 
 
+
+    
+  
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def add_productcategory(request, category_id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
 
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
     category = db.selectone("SELECT * FROM categories WHERE id=%s", (category_id,))
+
     if not category:
         messages.error(request, "Category not found.")
         return redirect("products")
 
-    # ✅ Fix: request.GET is always available here
-    page_str = request.GET.get("page", "1") or "1"
-    try:
-        page = int(page_str)
-    except ValueError:
-        page = 1
-
+    page = int(request.GET.get("page", "1") or 1)
     limit = 10
     offset = (page - 1) * limit
 
-    total_row = db.selectone("SELECT COUNT(*) AS count FROM products WHERE category_id=%s", (category_id,))
-    total = total_row["count"] if total_row else 0
-    total_pages = ceil(total / limit) if total > 0 else 1
+    
+    total_row = db.selectone("""
+         SELECT COUNT(*) AS count FROM products
+        WHERE category_id=%s AND admin_id=%s
+        """, (category_id, admin_id))
 
     products = db.selectall("""
-        SELECT p.*, 
-               c.name AS category_name, 
-               s.name AS subcategory_name,
-               (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN subcategories s ON p.subcategory_id = s.id
-        WHERE p.category_id=%s
-        ORDER BY p.id DESC
-        LIMIT %s OFFSET %s
-    """, (category_id, limit, offset))
+            SELECT 
+                p.id, p.title, p.price, p.sale_price, p.stock, p.description,
+                p.approved, p.pending_approval, p.disapproved,
+                p.created_at,
+                c.name AS category_name,
+                s.name AS subcategory_name,
+                (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN subcategories s ON p.subcategory_id = s.id
+            WHERE p.category_id=%s AND p.admin_id=%s
+            ORDER BY p.id DESC
+            LIMIT %s OFFSET %s
+        """, (category_id, admin_id, limit, offset))
+
+
+    total = total_row["count"] if total_row else 0
+    total_pages = ceil(total / limit) if total > 0 else 1
 
     context = {
         "category": category,
@@ -762,8 +744,12 @@ def add_productcategory(request, category_id):
         "page": page,
         "total_pages": total_pages,
         "total": total,
+        "admin": admin,
     }
     return render(request, "superadmin/Addproductscat.html", context)
+
+
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def add_products(request, category_id):
@@ -882,7 +868,9 @@ def edit_product(request, id):
 
     if request.method == "POST":
         title = request.POST.get("title", "")
-        subcategory_id = request.POST.get("subcategory", "")
+        subcategory_id = request.POST.get("subcategory")
+        if not subcategory_id or subcategory_id == "":
+            subcategory_id = None
         price = request.POST.get("price", "0")
         sale_price = request.POST.get("sale_price", "0")
         stock = request.POST.get("stock", "0")
@@ -892,11 +880,12 @@ def edit_product(request, id):
 
         # ✅ Update product
         db.update("""
-            UPDATE products
-            SET title=%s, subcategory_id=%s, price=%s, sale_price=%s, stock=%s, description=%s, 
-                meta_title=%s, meta_description=%s
-            WHERE id=%s
-        """, (title, subcategory_id, price, sale_price, stock, description, meta_title, meta_description, id))
+    UPDATE products
+    SET title=%s, subcategory_id=%s, price=%s, sale_price=%s, stock=%s, description=%s, 
+        meta_title=%s, meta_description=%s
+    WHERE id=%s
+""", (title, subcategory_id, price, sale_price, stock, description, meta_title, meta_description, id))
+
 
         # ✅ Delete old custom fields, then re-insert
         db.delete("DELETE FROM product_attributes WHERE product_id=%s", (id,))
@@ -927,26 +916,208 @@ def edit_product(request, id):
     }
     return render(request, "superadmin/edit-product.html", context)
 
-
-
-
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def approve_product(request):
-    
-    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
-    if not admin or not admin["is_superadmin"]:
-        messages.error(request, "Access denied. Super admin only.")
-        return redirect("admin-home")
-    
-    return render(request, 'superadmin/Approveproduct.html')
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
 
-def approve_product_list(request):
-    
-    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
-    if not admin or not admin["is_superadmin"]:
+    superadmin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not superadmin or not superadmin["is_superadmin"]:
         messages.error(request, "Access denied. Super admin only.")
         return redirect("admin-home")
-    
-    return render(request, 'superadmin/Approveproductlist.html')
+
+    # ✅ Fetch all admins who have pending products
+    pending_admins = db.selectall("""
+        SELECT a.id AS admin_id,
+               a.username,
+               a.email,
+               a.organization,
+               a.phone,
+               a.photo,
+               COUNT(p.id) AS pending_count
+        FROM adminusers a
+        JOIN products p ON p.admin_id = a.id
+        WHERE p.pending_approval=1 AND p.approved=0 AND p.disapproved=0
+        GROUP BY a.id, a.username, a.email, a.organization, a.phone
+        ORDER BY pending_count DESC
+    """)
+
+    return render(request, "superadmin/Approveproduct.html", {
+        "pending_admins": pending_admins
+    })
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def approve_product_list(request, admin_id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    superadmin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not superadmin or not superadmin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
+
+    # ✅ Fetch all products (pending + approved + disapproved) for this admin
+    products = db.selectall("""
+        SELECT p.*, 
+               c.name AS category_name, 
+               s.name AS subcategory_name,
+               a.username AS admin_name,
+               (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN subcategories s ON p.subcategory_id = s.id
+        LEFT JOIN adminusers a ON p.admin_id = a.id
+        WHERE p.admin_id=%s
+        ORDER BY 
+            CASE 
+                WHEN p.pending_approval=1 THEN 1 
+                WHEN p.approved=1 THEN 2 
+                ELSE 3 
+            END ASC, 
+            p.id DESC
+    """, (admin_id,))
+
+    admin_user = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    return render(request, "superadmin/Approveproductlist.html", {
+        "admin_user": admin_user,
+        "products": products
+    })
+
+# ✅ Approve Product
+def approve_product_action(request, product_id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    superadmin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not superadmin or not superadmin["is_superadmin"]:
+        messages.error(request, "Access denied.")
+        return redirect("admin-home")
+
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
+    if not product:
+        messages.error(request, "Product not found.")
+        return redirect("approve-product")
+
+    # ✅ Approve
+    db.update("""
+        UPDATE products 
+        SET approved=1, pending_approval=0, disapproved=0, disapprove_reason=NULL
+        WHERE id=%s
+    """, (product_id,))
+
+    # Notify uploader
+    db.insert("""
+        INSERT INTO notifications (admin_id, message)
+        VALUES (%s, %s)
+    """, (product["admin_id"], f"✅ Your product '{product['title']}' has been approved and is now live."))
+
+    messages.success(request, f"Product '{product['title']}' approved successfully.")
+    return redirect("approve-product-list", admin_id=product["admin_id"])
+
+
+# ❌ Disapprove Product
+def disapprove_product_action(request, product_id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    superadmin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not superadmin or not superadmin["is_superadmin"]:
+        messages.error(request, "Access denied.")
+        return redirect("admin-home")
+
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
+    if not product:
+        messages.error(request, "Product not found.")
+        return redirect("approve-product")
+
+    db.update("""
+        UPDATE products 
+        SET approved=0, pending_approval=0, disapproved=1, disapprove_reason=%s
+        WHERE id=%s
+    """, ("Product not approved by Superadmin.", product_id))
+
+    db.insert("""
+        INSERT INTO notifications (admin_id, message)
+        VALUES (%s, %s)
+    """, (product["admin_id"], f"❌ Your product '{product['title']}' has been disapproved by Superadmin."))
+
+    messages.warning(request, f"Product '{product['title']}' disapproved successfully.")
+    return redirect("approve-product-list", admin_id=product["admin_id"])
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def approval_list(request):
+    """Show all admins who have added any products (approved, pending, or disapproved)"""
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    superadmin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not superadmin or not superadmin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
+
+    # ✅ Fetch all admins who have at least one product
+    admins_with_products = db.selectall("""
+        SELECT a.id AS admin_id,
+               a.username,
+               a.email,
+               a.organization,
+               a.phone,
+               a.photo,
+               COUNT(p.id) AS total_products
+        FROM adminusers a
+        JOIN products p ON p.admin_id = a.id
+        GROUP BY a.id, a.username, a.email, a.organization, a.phone, a.photo
+        ORDER BY a.username ASC
+    """)
+
+    return render(request, "superadmin/ApprovalList.html", {
+        "admins_with_products": admins_with_products
+    })
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def approval_list_products(request, admin_id):
+    """Show all products (any status) by this admin"""
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    superadmin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not superadmin or not superadmin["is_superadmin"]:
+        messages.error(request, "Access denied. Super admin only.")
+        return redirect("admin-home")
+
+    products = db.selectall("""
+        SELECT p.*, 
+               c.name AS category_name, 
+               s.name AS subcategory_name,
+               a.username AS admin_name,
+               (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN subcategories s ON p.subcategory_id = s.id
+        LEFT JOIN adminusers a ON p.admin_id = a.id
+        WHERE p.admin_id=%s
+        ORDER BY p.id DESC
+    """, (admin_id,))
+
+    admin_user = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    return render(request, "superadmin/ApprovalListProducts.html", {
+        "admin_user": admin_user,
+        "products": products
+    })
+
+
+def admin_notifications(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    notes = db.selectall("""
+        SELECT * FROM notifications WHERE admin_id=%s ORDER BY created_at DESC
+    """, (admin_id,))
+
+    return render(request, "superadmin/admin-notifications.html", {"notifications": notes})
+
+
 
 def order_list(request):
     return render(request, 'superadmin/order-list.html')
@@ -1064,16 +1235,17 @@ def edit_admin(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
 
-    # Get existing admin data
-    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (id,))
-    if not admin:
-        messages.error(request, "Admin not found.")
-        return redirect("sellers")
-    
-    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
-    if not admin or not admin["is_superadmin"]:
+    # ✅ Get the logged-in admin (superadmin check)
+    logged_admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
+    if not logged_admin or not logged_admin["is_superadmin"]:
         messages.error(request, "Access denied. Super admin only.")
         return redirect("admin-home")
+
+    # ✅ Get the admin record to edit
+    admin_to_edit = db.selectone("SELECT * FROM adminusers WHERE id=%s", (id,))
+    if not admin_to_edit:
+        messages.error(request, "Admin not found.")
+        return redirect("sellers")
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -1085,16 +1257,15 @@ def edit_admin(request, id):
         photo_file = request.FILES.get("photo")
 
         # Convert date (dd/mm/yyyy → yyyy-mm-dd)
-        from datetime import datetime
         try:
             formatted_date = datetime.strptime(joining_date, "%d/%m/%Y").date() if joining_date else None
         except ValueError:
             formatted_date = None
 
-        # Update photo if a new one is uploaded
-        photo_path = admin["photo"]
+        # ✅ Handle photo update
+        photo_path = admin_to_edit["photo"]
         if photo_file:
-            # Delete old photo
+            # Delete old photo if exists
             if photo_path:
                 old_photo_path = os.path.join(settings.MEDIA_ROOT, photo_path)
                 if os.path.exists(old_photo_path):
@@ -1105,7 +1276,7 @@ def edit_admin(request, id):
             saved_name = fs.save(filename, photo_file)
             photo_path = f"admins/{saved_name}"
 
-        # Update DB record
+        # ✅ Update DB
         db.update("""
             UPDATE adminusers 
             SET username=%s, email=%s, phone=%s, organization=%s, address=%s, photo=%s, joining_date=%s
@@ -1113,12 +1284,6 @@ def edit_admin(request, id):
         """, (name, email, phone, organization, address, photo_path, formatted_date, id))
 
         messages.success(request, "Admin updated successfully!")
-        response = redirect("sellers")
+        return redirect("sellers")
 
-    # ✅ Immediately clear message storage (prevents showing again later)
-        storage = messages.get_messages(request)
-        storage.used = True
-
-        return response
-
-    return render(request, "superadmin/edit-admin.html", {"admin": admin})
+    return render(request, "superadmin/edit-admin.html", {"admin": admin_to_edit})

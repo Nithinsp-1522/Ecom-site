@@ -25,6 +25,31 @@
 	<!-- Theme CSS -->
 	<link rel="stylesheet" href="{% static 'assets/css/theme.min.css' %}">
 
+	<style>
+/* 🔴 Animated red dot indicator */
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #dc3545; /* Bootstrap red */
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(220, 53, 69, 0.7);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+</style>
+
+
 	<!-- Global site tag (gtag.js) - Google Analytics -->
 	<script async src="https://www.googletagmanager.com/gtag/js?id=G-M8S4MT3EYG"></script>
 	<script>
@@ -239,6 +264,10 @@
 									<div class="d-flex align-items-center">
 										<span class="nav-link-icon"><i class="bi bi-cart"></i></span>
 										<span class="nav-link-text">Products</span>
+										{% if pending_approvals and pending_approvals > 0 %}
+										<span
+											class="pulse-dot position-absolute bottom-30 start-50 translate-middle"></span>
+										{% endif %}
 									</div>
 								</a>
 								<div id="navCategoriesProducts" class="collapse " data-bs-parent="#sideNavbar">
@@ -247,9 +276,22 @@
 											<a class="nav-link " href="{% url 'products' %}">Add Products</a>
 										</li>
 										<!-- Nav item -->
-										 {% if admin.is_superadmin %}
+										{% if admin.is_superadmin %}
 										<li class="nav-item">
-											<a class="nav-link " href="{% url 'approve-product' %}">Approve Products</a>
+											<a class="nav-link position-relative" href="{% url 'approve-product' %}">
+												Approve Products
+												{% if pending_approvals and pending_approvals > 0 %}
+												<span
+													class="position-absolute bottom-0 start-100 translate-middle badge rounded-pill bg-danger">
+													{{ pending_approvals }}
+													<span class="visually-hidden">pending approvals</span>
+												</span>
+												{% endif %}
+											</a>
+										</li>
+										<li class="nav-item">
+											<a class="nav-link " href="{% url 'approval-list' %}">Approve Product
+												List</a>
 										</li>
 										{% endif %}
 									</ul>
@@ -273,7 +315,7 @@
 									</div>
 								</a>
 							</li>
-							
+
 
 							<li class="nav-item">
 								<a class="nav-link " href="{% url 'sellers' %}">
@@ -331,7 +373,7 @@
 							<li class="nav-item mt-6 mb-3">
 								<span class="nav-label">Store Managements</span>
 							</li>
-
+							{% if admin.is_superadmin %}
 							<li class="nav-item">
 								<a class="nav-link collapsed " href="#" data-bs-toggle="collapse"
 									data-bs-target="#navCategories" aria-expanded="false" aria-controls="navCategories">
@@ -353,6 +395,7 @@
 									</ul>
 								</div>
 							</li>
+							{% endif %}
 
 							<li class="nav-item ">
 								<a class="nav-link collapsed " href="#" data-bs-toggle="collapse"
@@ -368,9 +411,23 @@
 											<a class="nav-link " href="{% url 'products' %}">Add Products</a>
 										</li>
 										<!-- Nav item -->
+										{% if admin.is_superadmin %}
 										<li class="nav-item">
-											<a class="nav-link " href="{% url 'approve-product' %}">Approve Products</a>
+											<a class="nav-link position-relative" href="{% url 'approve-product' %}">
+												<i class="bi bi-check-circle me-2"></i> Approve Products
+												{% if pending_approvals and pending_approvals > 0 %}
+												<span
+													class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+													{{ pending_approvals }}
+													<span class="visually-hidden">pending approvals</span>
+												</span>
+												{% endif %}
+											</a>
 										</li>
+										<li class="nav-item">
+											<a class="nav-link " href="{% url 'approval-list' %}">Approval List</a>
+										</li>
+										{% endif %}
 									</ul>
 								</div>
 							</li>
@@ -384,7 +441,7 @@
 								</a>
 
 							</li>
-
+							{% if admin.is_superadmin %}
 							<li class="nav-item">
 								<a class="nav-link" href="{% url 'carousel-images' %} ">
 									<div class="d-flex align-items-center">
@@ -419,6 +476,7 @@
 									</div>
 								</a>
 							</li>
+							{% endif %}
 						</ul>
 					</div>
 				</div>

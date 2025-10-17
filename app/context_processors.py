@@ -13,8 +13,22 @@ def category_context(request):
 
 def admin_context(request):
     from . import db
+
+    context = {"admin": None, "pending_approvals": 0}
+
     if "admin_id" in request.session:
         admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
-        return {"admin": admin}
-    return {"admin": None}
+        context["admin"] = admin
+
+        # ✅ Only Superadmin sees pending product count
+        if admin and admin.get("is_superadmin"):
+            pending_count_row = db.selectone("""
+                SELECT COUNT(*) AS count
+                FROM products
+                WHERE pending_approval=1 AND approved=0 AND disapproved=0
+            """)
+            context["pending_approvals"] = pending_count_row["count"] if pending_count_row else 0
+
+    return context
+
     
