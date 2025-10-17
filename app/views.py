@@ -773,7 +773,9 @@ def add_products(request, category_id):
 
     if request.method == "POST":
         title = request.POST.get("title", "")
-        subcategory_id = request.POST.get("subcategory", "")
+        subcategory_id = request.POST.get("subcategory")
+        if not subcategory_id or subcategory_id == "":
+            subcategory_id = None
         price = request.POST.get("price", "0")
         sale_price = request.POST.get("sale_price", "0")
         stock = request.POST.get("stock", "0")
@@ -1116,6 +1118,16 @@ def admin_notifications(request):
     """, (admin_id,))
 
     return render(request, "superadmin/admin-notifications.html", {"notifications": notes})
+
+def mark_all_read(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    db.update("UPDATE notifications SET is_read=1 WHERE admin_id=%s", (admin_id,))
+    messages.success(request, "All notifications marked as read.")
+    return redirect("admin-home")
+
 
 
 

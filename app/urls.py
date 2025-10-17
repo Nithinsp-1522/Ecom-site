@@ -54,7 +54,10 @@ urlpatterns = [
     path('edit-product/<int:id>/', views.edit_product, name='edit-product'),
     path('delete-product/<int:id>/', views.delete_product, name='delete-product'),
 
-    
+    # Notification URLs
+    path("admin-notifications/", views.admin_notifications, name="admin-notifications"),
+    path("admin-notifications/mark-all/", views.mark_all_read, name="mark-all-read"),
+    path("mark-all-read/", views.mark_all_read, name="mark-all-read"),
     
     path('order-list/', views.order_list, name='order-list'),
     path('sellers/', views.sellers, name='sellers'),
