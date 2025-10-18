@@ -24,6 +24,18 @@
 				</div>
 			</div>
 		</div>
+		<div class="mb-4 d-flex justify-content-end gap-3">
+			<a href="{% url 'download_product_template_global' %}" class="btn btn-success btn-sm">
+				📥 Download Excel Format
+			</a>
+			<form method="POST" action="{% url 'upload_product_excel_global' %}" enctype="multipart/form-data"
+				class="d-inline">
+				{% csrf_token %}
+				<input type="file" name="excel_file" accept=".xlsx,.xls" required
+					class="form-control form-control-sm d-inline w-auto" />
+				<button type="submit" class="btn btn-primary btn-sm">📤 Upload Excel</button>
+			</form>
+		</div>
 		<section class="my-lg-14 my-8">
 			<!-- category -->
 			<div class="container">
@@ -39,16 +51,17 @@
 				<!-- row -->
 				<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-6 g-6">
 					<!-- col -->
-					 {% for category in categories %}
+					{% for category in categories %}
 					<div class="col">
-						
+
 						<a href="{% url 'add-productcategory' category.id %}" class="text-decoration-none text-inherit">
 							<!-- card -->
 							<div class="card card-product">
 								<div class="card-body text-center py-8">
 									<!-- img -->
-									<img src="/media/{{ category.image }}" alt="{{ category.name }}" class="mb-3" style="width: 100%;" />
-									
+									<img src="/media/{{ category.image }}" alt="{{ category.name }}" class="mb-3"
+										style="width: 100%;" />
+
 									<!-- text -->
 									<div class="text-truncate">{{ category.name }}</div>
 								</div>

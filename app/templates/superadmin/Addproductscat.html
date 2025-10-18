@@ -58,7 +58,8 @@
                         <tbody>
                            {% if products %}
                            {% for p in products %}
-                           <tr>
+                           <tr {% if p.disapprove_reason %} data-bs-toggle="tooltip" title="{{ p.disapprove_reason }}"
+                              {% endif %}>
                               <td><input class="form-check-input" type="checkbox" value="{{ p.id }}"></td>
                               <td>
                                  {% if p.main_image %}
@@ -72,11 +73,11 @@
                               <td>{{ p.title }}</td>
                               <td>{{ p.subcategory_name|default:"—" }}</td>
                               <td>
-                                 {% if p.pending_approval|yesno:"yes,no" == "yes" or p.pending_approval == 1 or p.pending_approval == "1" %}
+                                 {% if p.pending_approval %}
                                  <span class="badge bg-warning text-dark">Pending Approval</span>
-                                 {% elif p.approved|yesno:"yes,no" == "yes" or p.approved == 1 or p.approved == "1" %}
+                                 {% elif p.approved %}
                                  <span class="badge bg-success">Approved</span>
-                                 {% elif p.disapproved|yesno:"yes,no" == "yes" or p.disapproved == 1 or p.disapproved == "1" %}
+                                 {% elif p.disapproved %}
                                  <span class="badge bg-danger">Disapproved</span>
                                  {% else %}
                                  <span class="badge bg-secondary">Unknown</span>
@@ -106,6 +107,7 @@
                               </td>
                            </tr>
                            {% endfor %}
+
                            {% else %}
                            <tr>
                               <td colspan="8" class="text-center py-4 text-muted">No products found in this category.
@@ -152,5 +154,15 @@
       </div>
    </div>
 </main>
+
+<script>
+   document.addEventListener("DOMContentLoaded", function () {
+      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+         return new bootstrap.Tooltip(tooltipTriggerEl)
+      })
+   })
+</script>
+
 
 {% endblock %}

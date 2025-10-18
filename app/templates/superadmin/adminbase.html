@@ -141,13 +141,12 @@
 											{% if notifications %}
 											{% for note in notifications %}
 											<li
-												class="list-group-item px-4 py-3 list-group-item-action {% if not note.is_read %}active{% endif %}">
-												<a href="{% url 'admin-notifications' %}"
-													class="text-reset text-decoration-none d-flex flex-column">
+												class="list-group-item px-4 py-3 list-group-item-action {% if note.is_read == 0 %}active{% endif %}">
+												<div class="d-flex flex-column">
 													<p class="mb-1">{{ note.message }}</p>
 													<small class="text-muted">{{ note.created_at|date:"d M Y, h:i A"
 														}}</small>
-												</a>
+												</div>
 											</li>
 											{% endfor %}
 											{% else %}
@@ -160,10 +159,13 @@
 
 									<div class="border-top text-center py-3">
 										<a href="{% url 'admin-notifications' %}"
-											class="small text-decoration-none">View All Notifications</a>
+											class="small text-decoration-none">
+											View All Notifications
+										</a>
 									</div>
 								</div>
 							</li>
+
 
 							<li class="dropdown ms-4">
 								<a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

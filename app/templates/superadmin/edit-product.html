@@ -49,11 +49,10 @@
                     <input type="number" name="sale_price" value="{{ product.sale_price }}" step="0.01" class="form-control">
                 </div>
 
-                <div class="mb-3 col-lg-12">
-                    <label class="form-label">Description</label>
-                    <div id="editor">{{ product.description|safe }}</div>
-                    <textarea name="description" id="descriptionInput" hidden></textarea>
-                </div>
+                <div class="mb-3 col-lg-12 mt-4">
+                           <h4>Product Description</h4>
+                           <textarea name="description" id="descriptionInput" class="form-control" rows="6" placeholder="Product Description"></textarea>
+                        </div>
 
                 <div class="mb-3 col-lg-12">
                     <label class="form-label">Current Images</label>

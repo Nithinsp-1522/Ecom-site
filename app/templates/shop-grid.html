@@ -145,7 +145,9 @@
                         <div class="text-small mb-1">
                            <small class="text-muted">{{ product.subcategory_name|default:category.name }}</small>
                         </div>
-                        <h2 class="fs-6">
+                        <h6 class="fw-semibold mt-2 mb-1 product-title"
+    data-bs-toggle="tooltip"
+    data-bs-title="{{ product.title }}">
                            <a href="#!" class="text-inherit text-decoration-none">{{ product.title }}</a>
                         </h2>
 
@@ -222,6 +224,50 @@
    .row .col {
       display: flex;
    }
+
+.product-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+}
+
+/* 🎨 Custom Bootstrap Tooltip Styling */
+.custom-tooltip.bs-tooltip-top .tooltip-arrow::before {
+  border-top-color: #fff !important;
+}
+.custom-tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+  border-bottom-color: #fff !important;
+}
+.custom-tooltip .tooltip-inner {
+  background-color: #fff !important;   /* white tooltip background */
+  color: #222 !important;              /* dark readable text */
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  max-width: 250px;
+  text-align: center;
+}
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl, {
+      customClass: 'custom-tooltip',
+      placement: 'top',     // You can use 'bottom', 'left', or 'right'
+      delay: { show: 150, hide: 50 }
+    });
+  });
+});
+</script>
 
 {% endblock %}

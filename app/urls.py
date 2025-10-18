@@ -48,6 +48,11 @@ urlpatterns = [
     path("approve-product-list/<int:admin_id>/", views.approve_product_list, name="approve-product-list"),
     path("approve-product-approve/<int:product_id>/", views.approve_product_action, name="approve-product-approve"),
     path("approve-product-disapprove/<int:product_id>/", views.disapprove_product_action, name="approve-product-disapprove"),
+    path("view-product/<int:id>/", views.view_product, name="view-product"),
+    path("download-product-template-global/", views.download_product_template_global, name="download_product_template_global"),
+    path("upload-product-excel-global/", views.upload_product_excel_global, name="upload_product_excel_global"),
+
+    
     # Approval list pages
     path("approval-list/", views.approval_list, name="approval-list"),
     path("approval-list-products/<int:admin_id>/", views.approval_list_products, name="approval-list-products"),
@@ -58,7 +63,10 @@ urlpatterns = [
     path("admin-notifications/", views.admin_notifications, name="admin-notifications"),
     path("admin-notifications/mark-all/", views.mark_all_read, name="mark-all-read"),
     path("mark-all-read/", views.mark_all_read, name="mark-all-read"),
-    
+    path("delete-notification/<int:id>/", views.delete_notification, name="delete_notification"),
+    path("delete-selected-notifications/", views.delete_selected_notifications, name="delete_selected_notifications"),
+    path("delete-all-notifications/", views.delete_all_notifications, name="delete_all_notifications"),
+
     path('order-list/', views.order_list, name='order-list'),
     path('sellers/', views.sellers, name='sellers'),
     path('add-sellers/', views.add_sellers, name='add-sellers'),

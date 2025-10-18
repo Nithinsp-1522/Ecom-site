@@ -17,6 +17,10 @@ from datetime import datetime
 from django.shortcuts import get_object_or_404
 from math import ceil
 from django.core.paginator import Paginator
+from django.utils.html import strip_tags
+import pandas as pd
+from io import BytesIO
+from django.http import HttpResponse
 
 
 # Normalize phone numbers
@@ -721,7 +725,7 @@ def add_productcategory(request, category_id):
     products = db.selectall("""
             SELECT 
                 p.id, p.title, p.price, p.sale_price, p.stock, p.description,
-                p.approved, p.pending_approval, p.disapproved,
+                p.approved, p.pending_approval, p.disapproved, p.disapprove_reason,
                 p.created_at,
                 c.name AS category_name,
                 s.name AS subcategory_name,
@@ -747,9 +751,6 @@ def add_productcategory(request, category_id):
         "admin": admin,
     }
     return render(request, "superadmin/Addproductscat.html", context)
-
-
-
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def add_products(request, category_id):
@@ -1022,9 +1023,10 @@ def disapprove_product_action(request, product_id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
 
+    # must be superadmin
     superadmin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (request.session["admin_id"],))
-    if not superadmin or not superadmin["is_superadmin"]:
-        messages.error(request, "Access denied.")
+    if not superadmin or not superadmin.get("is_superadmin"):
+        messages.error(request, "Access denied. Super admin only.")
         return redirect("admin-home")
 
     product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
@@ -1032,18 +1034,33 @@ def disapprove_product_action(request, product_id):
         messages.error(request, "Product not found.")
         return redirect("approve-product")
 
-    db.update("""
-        UPDATE products 
-        SET approved=0, pending_approval=0, disapproved=1, disapprove_reason=%s
-        WHERE id=%s
-    """, ("Product not approved by Superadmin.", product_id))
+    if request.method == "POST":
+        # optional reason from form
+        reason = request.POST.get("disapprove_reason", "").strip()
+        # basic sanitization: remove HTML tags
+        reason_clean = strip_tags(reason) if reason else None
 
-    db.insert("""
-        INSERT INTO notifications (admin_id, message)
-        VALUES (%s, %s)
-    """, (product["admin_id"], f"❌ Your product '{product['title']}' has been disapproved by Superadmin."))
+        db.update("""
+            UPDATE products
+            SET approved=0, pending_approval=0, disapproved=1, disapprove_reason=%s
+            WHERE id=%s
+        """, (reason_clean, product_id))
 
-    messages.warning(request, f"Product '{product['title']}' disapproved successfully.")
+        # Insert notification for product owner (include reason if present)
+        if reason_clean:
+            notif_msg = f"❌ Your product '{product['title']}' was disapproved by Superadmin. Reason: {reason_clean}"
+        else:
+            notif_msg = f"❌ Your product '{product['title']}' was disapproved by Superadmin."
+
+        db.insert("""
+            INSERT INTO notifications (admin_id, message)
+            VALUES (%s, %s)
+        """, (product["admin_id"], notif_msg))
+
+        messages.warning(request, f"Product '{product['title']}' disapproved.")
+        return redirect("approve-product-list", admin_id=product["admin_id"])
+
+    # If someone GETs this URL directly, redirect back
     return redirect("approve-product-list", admin_id=product["admin_id"])
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -1107,6 +1124,121 @@ def approval_list_products(request, admin_id):
         "products": products
     })
 
+# ✅ Download Excel format (global)
+def download_product_template_global(request):
+    columns = [
+        "title", "category", "subcategory", "price", "sale_price", "stock",
+        "description", "meta_title", "meta_description", "is_vip"
+    ]
+
+    # Fetch all existing custom fields
+    custom_fields = db.selectall("SELECT DISTINCT field_name FROM product_attributes")
+    for field in custom_fields:
+        columns.append(field["field_name"])
+
+    df = pd.DataFrame(columns=columns)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name="Products")
+
+    output.seek(0)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="bulk_product_upload_template.xlsx"'
+    return response
+
+
+# ✅ Upload Excel (global)
+def upload_product_excel_global(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+
+    if request.method == "POST" and request.FILES.get("excel_file"):
+        excel_file = request.FILES["excel_file"]
+        try:
+            df = pd.read_excel(excel_file)
+        except Exception as e:
+            messages.error(request, f"Error reading Excel file: {str(e)}")
+            return redirect("products")
+
+        required_columns = ["title", "category", "price", "stock"]
+        for col in required_columns:
+            if col not in df.columns:
+                messages.error(request, f"Missing required column: {col}")
+                return redirect("products")
+
+        added_count, skipped = 0, []
+
+        for _, row in df.iterrows():
+            title = str(row.get("title", "")).strip()
+            category_name = str(row.get("category", "")).strip()
+            subcategory_name = str(row.get("subcategory", "")).strip()
+
+            if not title or not category_name:
+                continue
+
+            # Find category
+            category = db.selectone("SELECT id FROM categories WHERE name=%s", (category_name,))
+            if not category:
+                skipped.append(f"{title} (Category '{category_name}' not found)")
+                continue
+            category_id = category["id"]
+
+            # Find subcategory if exists
+            subcategory_id = None
+            if subcategory_name:
+                sub = db.selectone(
+                    "SELECT id FROM subcategories WHERE name=%s AND category_id=%s",
+                    (subcategory_name, category_id),
+                )
+                if sub:
+                    subcategory_id = sub["id"]
+
+            # Core product details
+            price = float(row.get("price", 0) or 0)
+            sale_price = float(row.get("sale_price", 0) or 0)
+            stock = int(row.get("stock", 0) or 0)
+            description = str(row.get("description", "") or "")
+            meta_title = str(row.get("meta_title", "") or "")
+            meta_description = str(row.get("meta_description", "") or "")
+            is_vip = str(row.get("is_vip", "")).lower() in ["true", "1", "yes"]
+
+            db.insert("""
+                INSERT INTO products
+                (title, category_id, subcategory_id, price, sale_price, stock, description,
+                 meta_title, meta_description, admin_id, approved, pending_approval, is_vip)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (title, category_id, subcategory_id, price, sale_price, stock,
+                  description, meta_title, meta_description, admin_id,
+                  admin["is_superadmin"], not admin["is_superadmin"], is_vip))
+
+            product = db.selectone("SELECT id FROM products ORDER BY id DESC LIMIT 1")
+
+            # Handle custom fields
+            standard_cols = [
+                "title", "category", "subcategory", "price", "sale_price",
+                "stock", "description", "meta_title", "meta_description", "is_vip"
+            ]
+            for col in df.columns:
+                if col not in standard_cols and pd.notna(row.get(col)):
+                    db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)",
+                              (product["id"], col, str(row[col])))
+
+            added_count += 1
+
+        msg = f"✅ {added_count} products added successfully."
+        if skipped:
+            msg += f" Skipped: {', '.join(skipped[:5])}"
+        messages.success(request, msg)
+        return redirect("products")
+
+    return redirect("products")
 
 def admin_notifications(request):
     if "admin_id" not in request.session:
@@ -1114,9 +1246,9 @@ def admin_notifications(request):
 
     admin_id = request.session["admin_id"]
     notes = db.selectall("""
-        SELECT * FROM notifications WHERE admin_id=%s ORDER BY created_at DESC
+        SELECT * FROM notifications
+        WHERE admin_id=%s ORDER BY created_at DESC
     """, (admin_id,))
-
     return render(request, "superadmin/admin-notifications.html", {"notifications": notes})
 
 def mark_all_read(request):
@@ -1128,6 +1260,53 @@ def mark_all_read(request):
     messages.success(request, "All notifications marked as read.")
     return redirect("admin-home")
 
+def delete_notification(request, id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+    db.update("DELETE FROM notifications WHERE id=%s", (id,))
+    return redirect("admin-notifications")
+
+
+def delete_selected_notifications(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    if request.method == "POST":
+        selected = request.POST.getlist("selected[]")
+        if selected:
+            ids = ",".join(selected)
+            db.update(f"DELETE FROM notifications WHERE id IN ({ids})")
+    return redirect("admin-notifications")
+
+
+def delete_all_notifications(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+    admin_id = request.session["admin_id"]
+    db.update("DELETE FROM notifications WHERE admin_id=%s", (admin_id,))
+    return redirect("admin-notifications")
+
+
+def view_product(request, id):
+    product = db.selectone("""
+        SELECT p.*, c.name AS category_name, s.name AS subcategory_name,
+               a.username AS admin_name,
+               (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN subcategories s ON p.subcategory_id = s.id
+        LEFT JOIN adminusers a ON p.admin_id = a.id
+        WHERE p.id=%s
+    """, (id,))
+
+    images = db.selectall("SELECT * FROM product_images WHERE product_id=%s", (id,))
+    attributes = db.selectall("SELECT * FROM product_attributes WHERE product_id=%s", (id,))
+
+    return render(request, "shop-single.html", {
+        "product": product,
+        "images": images,
+        "attributes": attributes,
+    })
 
 
 
