@@ -1,0 +1,99 @@
+{% extends "superadmin/adminbase.html" %}
+{% load static %}
+{% block title %}Upgrade Plan{% endblock %}
+{% block content %}
+
+<main class="main-content-wrapper">
+  <div class="container">
+
+    <div class="text-center mb-5">
+      <h2 class="fw-bold"> Unlock Advanced Features</h2>
+      <p class="text-muted">Choose a plan that fits your business — billed monthly or yearly.</p>
+    </div>
+
+    <!-- Toggle for Monthly / Yearly -->
+    <div class="text-center mb-5">
+      <div class="form-check form-switch d-inline-flex align-items-center">
+        <label class="form-check-label me-2 fw-semibold">Monthly</label>
+        <input class="form-check-input" type="checkbox" id="billingToggle">
+        <label class="form-check-label ms-2 fw-semibold">Yearly <span class="text-success small">(Save 20%)</span></label>
+      </div>
+    </div>
+
+    <!-- Plans -->
+    <div class="row justify-content-center g-4" id="plansContainer">
+      {% for p in all_plans %}
+      <div class="col-md-4 col-sm-6">
+        <div class="card h-100 border-0 shadow-sm rounded-4 plan-card text-center">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <div>
+              <h4 class="fw-bold text-primary mb-2">{{ p.plan_name }}</h4>
+              <p class="price display-6 fw-semibold mb-2 text-dark">
+                ₹<span class="price-value" data-monthly="{{ p.price }}" data-yearly="{{ p.price|add:"-0.2"|floatformat:0 }}">{{ p.price }}</span>
+                <span class="fs-6 text-muted">/mo</span>
+              </p>
+              <p class="text-muted mb-3">Up to <strong>{{ p.product_limit }}</strong> products</p>
+
+              <ul class="list-unstyled text-start mx-auto" style="max-width: 240px;">
+                {% if p.description %}
+                  {% for line in p.description.splitlines %}
+                  <li> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bullseye" viewBox="0 0 16 16">
+  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+  <path d="M8 13A5 5 0 1 1 8 3a5 5 0 0 1 0 10m0 1A6 6 0 1 0 8 2a6 6 0 0 0 0 12"/>
+  <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6m0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/>
+  <path d="M9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
+</svg> {{ line }}</li>
+                  {% endfor %}
+                {% else %}
+                  <li> Product upload limit: {{ p.product_limit }}</li>
+                  <li> Email support</li>
+                  <li> Access to analytics</li>
+                {% endif %}
+              </ul>
+            </div>
+            <div class="mt-4">
+              <a href="{% url 'payment' %}?plan_id={{ p.id }}" class="btn btn-success w-100 py-2 fw-semibold">Select {{ p.plan_name }}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12 text-center text-muted">
+        <p>No plans available right now. Please contact the superadmin.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</main>
+
+<style>
+.plan-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const toggle = document.getElementById("billingToggle");
+  const prices = document.querySelectorAll(".price-value");
+  const spans = document.querySelectorAll(".price span.fs-6");
+
+  toggle.addEventListener("change", () => {
+    prices.forEach(el => {
+      const monthly = parseFloat(el.dataset.monthly);
+      const yearly = parseFloat(el.dataset.yearly);
+      el.textContent = toggle.checked ? yearly : monthly;
+    });
+    spans.forEach(span => {
+      span.textContent = toggle.checked ? "/yr" : "/mo";
+    });
+  });
+});
+</script>
+
+{% endblock %}

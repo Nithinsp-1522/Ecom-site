@@ -689,13 +689,24 @@ def delete_subcategory(request, id):
 
 
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def products(request):
-    
-    categories = db.selectall("SELECT * FROM categories ORDER BY id ASC")
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
 
-    return render(request, 'superadmin/products.html', {"categories": categories})
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    categories = db.selectall("SELECT * FROM categories ORDER BY name ASC")
 
+    # ✅ Add this line to fetch active plan
+    all_plans = db.selectall("SELECT * FROM plans WHERE is_active=1 ORDER BY price ASC")
 
+    context = {
+        "categories": categories,
+        "admin": admin,
+        "all_plans": all_plans,  # ✅ Added for your modal
+    }
+    return render(request, "superadmin/products.html", context)
 
     
   
@@ -766,17 +777,29 @@ def add_products(request, category_id):
         messages.error(request, "Invalid category.")
         return redirect("products")
 
-    # Product limit check
+    # ✅ Get active plan (for product limit)
+    plan = db.selectone("SELECT * FROM plans WHERE is_active=1 LIMIT 1")
+    plan_limit = plan["product_limit"] if plan else 25  # Default fallback if plan missing
+
+    # ✅ Product count check
     product_count = db.selectone("SELECT COUNT(*) as count FROM products WHERE admin_id=%s", (admin_id,))
-    if not admin["is_superadmin"] and product_count["count"] >= 25:
-        messages.warning(request, "You’ve reached your product limit. Please request upgrade or approval.")
+    current_count = product_count["count"] if product_count else 0
+
+    # ✅ Restrict normal admins (superadmin has no limit)
+    if not admin["is_superadmin"] and current_count >= plan_limit:
+        messages.error(
+            request,
+            f"🚫 You’ve reached your product limit ({plan_limit}). Please upgrade your plan to add more products."
+        )
         return redirect("products")
 
+    # ✅ Handle product submission
     if request.method == "POST":
         title = request.POST.get("title", "")
         subcategory_id = request.POST.get("subcategory")
         if not subcategory_id or subcategory_id == "":
             subcategory_id = None
+
         price = request.POST.get("price", "0")
         sale_price = request.POST.get("sale_price", "0")
         stock = request.POST.get("stock", "0")
@@ -787,38 +810,48 @@ def add_products(request, category_id):
 
         approved = admin["is_superadmin"]
         pending_approval = not admin["is_superadmin"]
-        
-         # ✅ Ensure subcategory is None if there are no subcategories
+
+        # ✅ Ensure subcategory is None if none exist
         if not subcategories:
             subcategory_id = None
 
+        # ✅ Save product
         db.insert("""
             INSERT INTO products 
-            (title, category_id, subcategory_id, price, sale_price, stock, description, meta_title, meta_description, admin_id, approved, pending_approval)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            (title, category_id, subcategory_id, price, sale_price, stock, description,
+             meta_title, meta_description, admin_id, approved, pending_approval, is_vip)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
             title, category_id, subcategory_id, price, sale_price, stock,
-            description, meta_title, meta_description, admin_id, approved, pending_approval
+            description, meta_title, meta_description, admin_id,
+            approved, pending_approval, is_vip
         ))
 
         product = db.selectone("SELECT * FROM products ORDER BY id DESC LIMIT 1")
 
+        # ✅ Upload product images
         files = request.FILES.getlist("images")
         if files:
             fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
             for img in files:
                 filename = get_random_string(8) + "_" + img.name
                 fs.save(filename, img)
-                db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (product["id"], f"products/{filename}"))
+                db.insert(
+                    "INSERT INTO product_images (product_id, image) VALUES (%s,%s)",
+                    (product["id"], f"products/{filename}")
+                )
 
-        # Save custom fields
+        # ✅ Save custom fields
         field_names = request.POST.getlist("field_name[]")
         field_values = request.POST.getlist("field_value[]")
         for name, value in zip(field_names, field_values):
             if name and value:
-                db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)", (product["id"], name, value))
+                db.insert(
+                    "INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)",
+                    (product["id"], name, value)
+                )
 
-        messages.success(request, f"Product '{title}' added successfully to {category['name']}")
+        messages.success(request, f"✅ Product '{title}' added successfully to {category['name']}")
         return redirect("add-productcategory", category_id=category_id)
 
     context = {
@@ -827,6 +860,7 @@ def add_products(request, category_id):
         "admin": admin,
     }
     return render(request, "superadmin/add-product.html", context)
+
 
 def delete_product(request, id):
     if "admin_id" not in request.session:
@@ -847,6 +881,46 @@ def delete_product(request, id):
     db.delete("DELETE FROM products WHERE id=%s", (id,))
     messages.success(request, f"Product '{product['title']}' deleted successfully.")
     return redirect("add-productcategory", category_id=product["category_id"])
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def delete_selected_products(request):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    if request.method == "POST":
+        selected = request.POST.getlist("selected_products")
+
+        if not selected:
+            messages.warning(request, "⚠️ No products selected for deletion.")
+            return redirect(request.META.get("HTTP_REFERER", "products"))
+
+        deleted_count = 0
+
+        for pid in selected:
+            # Fetch product
+            product = db.selectone("SELECT * FROM products WHERE id=%s", (pid,))
+            if not product:
+                continue
+
+            # Delete product images from media
+            images = db.selectall("SELECT image FROM product_images WHERE product_id=%s", (pid,))
+            for img in images:
+                img_path = os.path.join(settings.MEDIA_ROOT, img["image"])
+                if os.path.exists(img_path):
+                    os.remove(img_path)
+
+            # Delete related entries
+            db.delete("DELETE FROM product_images WHERE product_id=%s", (pid,))
+            db.delete("DELETE FROM product_attributes WHERE product_id=%s", (pid,))
+            db.delete("DELETE FROM products WHERE id=%s", (pid,))
+            deleted_count += 1
+
+        messages.success(request, f"🗑️ {deleted_count} product(s) deleted successfully.")
+        return redirect(request.META.get("HTTP_REFERER", "products"))
+
+    return redirect("products")
+
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def edit_product(request, id):
@@ -1126,23 +1200,90 @@ def approval_list_products(request, admin_id):
 
 # ✅ Download Excel format (global)
 def download_product_template_global(request):
+    import pandas as pd
+    from io import BytesIO
+    from django.http import HttpResponse
+    import xlsxwriter
+
+    # Fetch categories and subcategories
+    categories = db.selectall("SELECT id, name FROM categories ORDER BY name ASC")
+    subcategories = db.selectall("SELECT id, name, category_id FROM subcategories ORDER BY name ASC")
+
+    # Custom fields
+    custom_fields = db.selectall("SELECT DISTINCT field_name FROM product_attributes")
+
+    # Core columns
     columns = [
-        "title", "category", "subcategory", "price", "sale_price", "stock",
-        "description", "meta_title", "meta_description", "is_vip"
+        "title", "category", "subcategory", "price", "sale_price",
+        "stock", "description", "meta_title", "meta_description", "is_vip"
     ]
 
-    # Fetch all existing custom fields
-    custom_fields = db.selectall("SELECT DISTINCT field_name FROM product_attributes")
     for field in custom_fields:
         columns.append(field["field_name"])
 
-    df = pd.DataFrame(columns=columns)
-
+    # Create Excel workbook in memory
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False, sheet_name="Products")
+    workbook = xlsxwriter.Workbook(output)
+    worksheet = workbook.add_worksheet("Products")
 
+    # ✅ Header format
+    header_fmt = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
+    for col, name in enumerate(columns):
+        worksheet.write(0, col, name, header_fmt)
+        worksheet.set_column(col, col, 20)
+
+    # Write empty data rows (for user to fill)
+    for i in range(1, 100):
+        for j in range(len(columns)):
+            worksheet.write(i, j, "")
+
+    # --- Create a hidden sheet for dropdown data ---
+    hidden = workbook.add_worksheet("Lists")
+    hidden.hide()
+
+    # Category dropdown list
+    cat_names = [c["name"] for c in categories]
+    for idx, name in enumerate(cat_names):
+        hidden.write(idx, 0, name)
+
+    # Subcategory lists per category (for indirect dropdowns)
+    col_offset = 1
+    cat_map = {}  # e.g. { 'Men': 'B2:B5' }
+    for cat in categories:
+        sub_names = [s["name"] for s in subcategories if s["category_id"] == cat["id"]]
+        if not sub_names:
+            continue
+        start_row = 0
+        for r, name in enumerate(sub_names):
+            hidden.write(r, col_offset, name)
+        end_row = len(sub_names)
+        col_letter = xlsxwriter.utility.xl_col_to_name(col_offset)
+        cat_map[cat["name"]] = f"{col_letter}$1:{col_letter}${end_row}"
+        col_offset += 1
+
+    # --- Named ranges for subcategories ---
+    for cat_name, ref in cat_map.items():
+        safe_name = cat_name.replace(" ", "_")
+        workbook.define_name(safe_name, f"=Lists!{ref}")
+
+    # --- Add dropdown for Category ---
+    worksheet.data_validation(
+        "B2:B100",
+        {"validate": "list", "source": f"=Lists!$A$1:$A${len(cat_names)}"}
+    )
+
+    # --- Add dependent dropdown for Subcategory ---
+    # Excel INDIRECT formula
+    for row in range(2, 102):
+        worksheet.data_validation(
+            f"C{row}",
+            {"validate": "list", "source": f"=INDIRECT(SUBSTITUTE($B{row},\" \",\"_\"))"}
+        )
+
+    workbook.close()
     output.seek(0)
+
+    # Send response
     response = HttpResponse(
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1151,13 +1292,25 @@ def download_product_template_global(request):
     return response
 
 
+
 # ✅ Upload Excel (global)
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def upload_product_excel_global(request):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
 
+    import io
+    import pandas as pd
+    from django.utils.safestring import mark_safe
+
     admin_id = request.session["admin_id"]
     admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+
+    # ✅ Active plan and product count
+    plan = db.selectone("SELECT * FROM plans WHERE is_active=1 LIMIT 1")
+    plan_limit = plan["product_limit"] if plan else 25
+    product_count = db.selectone("SELECT COUNT(*) AS count FROM products WHERE admin_id=%s", (admin_id,))
+    current_count = product_count["count"] if product_count else 0
 
     if request.method == "POST" and request.FILES.get("excel_file"):
         excel_file = request.FILES["excel_file"]
@@ -1173,8 +1326,43 @@ def upload_product_excel_global(request):
                 messages.error(request, f"Missing required column: {col}")
                 return redirect("products")
 
-        added_count, skipped = 0, []
+        total_rows = len(df)
 
+        # ✅ Strict check: reject if Excel file has more rows than plan limit
+        if not admin["is_superadmin"] and total_rows > plan_limit:
+            preview_html = (
+                df.head(5)
+                .to_html(index=False, border=0, classes="table table-bordered table-sm mb-0")
+            )
+            msg = mark_safe(
+                f"""
+                🚫 <strong>Upload rejected:</strong> Your plan allows only {plan_limit} products per file.<br>
+                This file contains <strong>{total_rows}</strong> rows.<br><br>
+                <strong>Preview of first 5 rows:</strong><br>{preview_html}
+                """
+            )
+            messages.error(request, msg)
+            return redirect("products")
+
+        # ✅ Also reject if total (existing + new) exceeds limit
+        if not admin["is_superadmin"] and (current_count + total_rows) > plan_limit:
+            remaining = plan_limit - current_count
+            preview_html = (
+                df.head(5)
+                .to_html(index=False, border=0, classes="table table-bordered table-sm mb-0")
+            )
+            msg = mark_safe(
+                f"""
+                🚫 <strong>Upload rejected:</strong> You already have {current_count} products.<br>
+                Your plan allows {plan_limit} total products, so you can only add {remaining} more.<br><br>
+                <strong>Preview of your file:</strong><br>{preview_html}
+                """
+            )
+            messages.error(request, msg)
+            return redirect("products")
+
+        # ✅ Proceed with normal insert
+        added_count = 0
         for _, row in df.iterrows():
             title = str(row.get("title", "")).strip()
             category_name = str(row.get("category", "")).strip()
@@ -1183,14 +1371,12 @@ def upload_product_excel_global(request):
             if not title or not category_name:
                 continue
 
-            # Find category
             category = db.selectone("SELECT id FROM categories WHERE name=%s", (category_name,))
             if not category:
-                skipped.append(f"{title} (Category '{category_name}' not found)")
-                continue
-            category_id = category["id"]
+                messages.error(request, f"❌ Category '{category_name}' not found in DB.")
+                return redirect("products")
 
-            # Find subcategory if exists
+            category_id = category["id"]
             subcategory_id = None
             if subcategory_name:
                 sub = db.selectone(
@@ -1200,7 +1386,6 @@ def upload_product_excel_global(request):
                 if sub:
                     subcategory_id = sub["id"]
 
-            # Core product details
             price = float(row.get("price", 0) or 0)
             sale_price = float(row.get("sale_price", 0) or 0)
             stock = int(row.get("stock", 0) or 0)
@@ -1214,13 +1399,15 @@ def upload_product_excel_global(request):
                 (title, category_id, subcategory_id, price, sale_price, stock, description,
                  meta_title, meta_description, admin_id, approved, pending_approval, is_vip)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, (title, category_id, subcategory_id, price, sale_price, stock,
-                  description, meta_title, meta_description, admin_id,
-                  admin["is_superadmin"], not admin["is_superadmin"], is_vip))
+            """, (
+                title, category_id, subcategory_id, price, sale_price, stock,
+                description, meta_title, meta_description, admin_id,
+                admin["is_superadmin"], not admin["is_superadmin"], is_vip
+            ))
 
             product = db.selectone("SELECT id FROM products ORDER BY id DESC LIMIT 1")
 
-            # Handle custom fields
+            # Custom fields
             standard_cols = [
                 "title", "category", "subcategory", "price", "sale_price",
                 "stock", "description", "meta_title", "meta_description", "is_vip"
@@ -1232,13 +1419,172 @@ def upload_product_excel_global(request):
 
             added_count += 1
 
-        msg = f"✅ {added_count} products added successfully."
-        if skipped:
-            msg += f" Skipped: {', '.join(skipped[:5])}"
-        messages.success(request, msg)
+        messages.success(request, f"✅ {added_count} products added successfully.")
         return redirect("products")
 
     return redirect("products")
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def manage_plans(request):
+    """Superadmin view: list all plans."""
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    if not admin["is_superadmin"]:
+        messages.error(request, "Access denied.")
+        return redirect("admin-home")
+
+    plans = db.selectall("SELECT * FROM plans ORDER BY id DESC")
+    return render(request, "superadmin/manage_plans.html", {"plans": plans})
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def add_plan(request):
+    """Superadmin: Add new plan."""
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    if not admin["is_superadmin"]:
+        messages.error(request, "Access denied.")
+        return redirect("admin-home")
+
+    if request.method == "POST":
+        plan_name = request.POST.get("plan_name", "")
+        price = request.POST.get("price", 0)
+        product_limit = request.POST.get("product_limit", 25)
+        description = request.POST.get("description", "")
+        is_active = "is_active" in request.POST
+
+        db.insert(
+            "INSERT INTO plans (plan_name, price, product_limit, description, is_active) VALUES (%s,%s,%s,%s,%s)",
+            (plan_name, price, product_limit, description, is_active),
+        )
+        messages.success(request, f"Plan '{plan_name}' added successfully.")
+        return redirect("manage-plans")
+
+    return render(request, "superadmin/add_plan.html")
+
+# ✅ Edit Plan
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def edit_plan(request, plan_id):
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    if not admin["is_superadmin"]:
+        messages.error(request, "Access denied.")
+        return redirect("admin-home")
+
+    plan = db.selectone("SELECT * FROM plans WHERE id=%s", (plan_id,))
+    if not plan:
+        messages.error(request, "Plan not found.")
+        return redirect("manage-plans")
+
+    if request.method == "POST":
+        plan_name = request.POST.get("plan_name", "")
+        price = request.POST.get("price", 0)
+        product_limit = request.POST.get("product_limit", 0)
+        description = request.POST.get("description", "")
+        is_active = "is_active" in request.POST
+
+        db.update(
+            "UPDATE plans SET plan_name=%s, price=%s, product_limit=%s, description=%s, is_active=%s WHERE id=%s",
+            (plan_name, price, product_limit, description, is_active, plan_id),
+        )
+        messages.success(request, f"✅ Plan '{plan_name}' updated successfully.")
+        return redirect("manage-plans")
+
+    return render(request, "superadmin/edit_plan.html", {"plan": plan})
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def delete_plan(request, plan_id):
+    """Delete a plan (superadmin only)"""
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    if not admin["is_superadmin"]:
+        messages.error(request, "Access denied.")
+        return redirect("admin-home")
+
+    # 🔹 Fetch the plan
+    plan = db.selectone("SELECT * FROM plans WHERE id=%s", (plan_id,))
+
+    if not plan:
+        messages.error(request, "Plan not found.")
+        return redirect("manage-plans")
+
+    # 🔹 Prevent deleting an active plan
+    if plan["is_active"]:
+        messages.error(
+            request,
+            f"⚠️ Cannot delete active plan '{plan['plan_name']}'. Please deactivate it first."
+        )
+        return redirect("manage-plans")
+
+    # 🔹 Safe to delete now
+    db.delete("DELETE FROM plans WHERE id=%s", (plan_id,))
+    messages.success(request, f" Plan '{plan['plan_name']}' deleted successfully.")
+    return redirect("manage-plans")
+
+
+
+
+# ✅ Toggle Active / Inactive
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def toggle_plan_status(request, plan_id):
+    """AJAX toggle plan active/inactive"""
+    if "admin_id" not in request.session:
+        return JsonResponse({"status": "error", "message": "Login required."})
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    if not admin["is_superadmin"]:
+        return JsonResponse({"status": "error", "message": "Access denied."})
+
+    plan = db.selectone("SELECT * FROM plans WHERE id=%s", (plan_id,))
+    if not plan:
+        return JsonResponse({"status": "error", "message": "Plan not found."})
+
+    new_status = not bool(plan["is_active"])  # ensure it's boolean toggle
+    db.update("UPDATE plans SET is_active=%s WHERE id=%s", (new_status, plan_id))
+
+    return JsonResponse({
+        "status": "success",
+        "is_active": new_status,
+        "message": f"Plan '{plan['plan_name']}' is now {'Active' if new_status else 'Inactive'}."
+    })
+
+
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def payment(request):
+    """Payment page showing all available plans."""
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
+
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+
+    # Get all active plans
+    all_plans = db.selectall("SELECT * FROM plans WHERE is_active=1 ORDER BY price ASC")
+
+    return render(request, "superadmin/payment.html", {
+        "all_plans": all_plans,
+        "admin": admin,
+    })
+
+
+
 
 def admin_notifications(request):
     if "admin_id" not in request.session:

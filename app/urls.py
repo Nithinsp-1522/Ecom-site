@@ -51,6 +51,8 @@ urlpatterns = [
     path("view-product/<int:id>/", views.view_product, name="view-product"),
     path("download-product-template-global/", views.download_product_template_global, name="download_product_template_global"),
     path("upload-product-excel-global/", views.upload_product_excel_global, name="upload_product_excel_global"),
+    path("delete-selected-products/", views.delete_selected_products, name="delete_selected_products"),
+
 
     
     # Approval list pages
@@ -58,6 +60,12 @@ urlpatterns = [
     path("approval-list-products/<int:admin_id>/", views.approval_list_products, name="approval-list-products"),
     path('edit-product/<int:id>/', views.edit_product, name='edit-product'),
     path('delete-product/<int:id>/', views.delete_product, name='delete-product'),
+    path("manage-plans/", views.manage_plans, name="manage-plans"),
+    path("add-plan/", views.add_plan, name="add_plan"),
+    path("edit-plan/<int:plan_id>/", views.edit_plan, name="edit_plan"),
+    path("toggle-plan-status/<int:plan_id>/", views.toggle_plan_status, name="toggle_plan_status"),
+    path("delete-plan/<int:plan_id>/", views.delete_plan, name="delete_plan"),
+    path("payment/", views.payment, name="payment"),
 
     # Notification URLs
     path("admin-notifications/", views.admin_notifications, name="admin-notifications"),

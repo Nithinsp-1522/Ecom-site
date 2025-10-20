@@ -15,154 +15,180 @@
                   <!-- Breadcrumb -->
                   <nav aria-label="breadcrumb">
                      <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="{% url 'admin-home' %}" class="text-inherit">Dashboard</a>
-                        </li>
-                        <li class="breadcrumb-item"><a href="{% url 'products' %}" class="text-inherit">Product
-                              Categories</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'admin-home' %}" class="text-inherit">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'products' %}" class="text-inherit">Product Categories</a></li>
                         <li class="breadcrumb-item active" aria-current="page">Products by Category</li>
                      </ol>
                   </nav>
                </div>
-               <!-- Add Product button -->
-               <div class="d-flex justify-content-between align-items-center mb-3">
-                  <a href="{% url 'add-products' category.id %}" class="btn btn-primary">+ Add Product</a>
-               </div>
             </div>
          </div>
       </div>
 
-      <!-- Table -->
-      <div class="row">
-         <div class="col-xl-12 col-12 mb-5">
-            <div class="card h-100 card-lg">
-               <div class="card-body p-0">
-                  <div class="table-responsive">
-                     <table
-                        class="table table-centered table-hover text-nowrap table-borderless mb-0 table-with-checkbox">
-                        <thead class="bg-light">
-                           <tr>
-                              <th style="width: 30px;">
-                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="checkAll" />
-                                 </div>
-                              </th>
-                              <th style="width: 80px;">Image</th>
-                              <th>Product Name</th>
-                              <th>Subcategory</th>
-                              <th>Status</th>
-                              <th>Price</th>
-                              <th>Created</th>
-                              <th class="text-end">Actions</th>
-                           </tr>
-                        </thead>
-                        <tbody>
-                           {% if products %}
-                           {% for p in products %}
-                           <tr {% if p.disapprove_reason %} data-bs-toggle="tooltip" title="{{ p.disapprove_reason }}"
-                              {% endif %}>
-                              <td><input class="form-check-input" type="checkbox" value="{{ p.id }}"></td>
-                              <td>
-                                 {% if p.main_image %}
-                                 <img src="/media/{{ p.main_image }}" alt="{{ p.title }}"
-                                    class="icon-shape icon-md rounded-2" />
-                                 {% else %}
-                                 <img src="{% static 'assets/images/placeholder.png' %}" alt="No image"
-                                    class="icon-shape icon-md rounded-2" />
-                                 {% endif %}
-                              </td>
-                              <td>{{ p.title }}</td>
-                              <td>{{ p.subcategory_name|default:"—" }}</td>
-                              <td>
-                                 {% if p.pending_approval %}
-                                 <span class="badge bg-warning text-dark">Pending Approval</span>
-                                 {% elif p.approved %}
-                                 <span class="badge bg-success">Approved</span>
-                                 {% elif p.disapproved %}
-                                 <span class="badge bg-danger">Disapproved</span>
-                                 {% else %}
-                                 <span class="badge bg-secondary">Unknown</span>
-                                 {% endif %}
-                              </td>
-                              <td>₹{{ p.price|floatformat:2 }}</td>
-                              <td>{{ p.created_at|date:"d M Y" }}</td>
-                              <td class="text-end">
-                                 <div class="dropdown">
-                                    <a href="#" class="text-reset" data-bs-toggle="dropdown" aria-expanded="false">
-                                       <i class="feather-icon icon-more-vertical fs-5"></i>
-                                    </a>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                       <li>
-                                          <a class="dropdown-item" href="{% url 'edit-product' p.id %}">
-                                             <i class="bi bi-pencil-square me-2"></i>Edit
-                                          </a>
-                                       </li>
-                                       <li>
-                                          <a class="dropdown-item text-danger" href="{% url 'delete-product' p.id %}"
-                                             onclick="return confirm('Are you sure you want to delete this product?')">
-                                             <i class="bi bi-trash me-2"></i>Delete
-                                          </a>
-                                       </li>
-                                    </ul>
-                                 </div>
-                              </td>
-                           </tr>
+      <!-- ✅ Bulk Delete Form (Single Form for Checkboxes + Button) -->
+      <form method="POST" action="{% url 'delete_selected_products' %}" id="bulkDeleteForm">
+         {% csrf_token %}
+         <input type="hidden" name="category_id" value="{{ category.id }}">
+
+         <div class="d-flex justify-content-between align-items-center mb-3">
+            <a href="{% url 'add-products' category.id %}" class="btn btn-primary">+ Add Product</a>
+
+            <button type="submit" class="btn btn-danger" id="deleteSelectedBtn" disabled
+               onclick="return confirm('Are you sure you want to delete the selected products?')">
+               🗑️ Delete Selected
+            </button>
+         </div>
+
+         <!-- Table -->
+         <div class="row">
+            <div class="col-xl-12 col-12 mb-5">
+               <div class="card h-100 card-lg">
+                  <div class="card-body p-0">
+                     <div class="table-responsive">
+                        <table class="table table-centered table-hover text-nowrap table-borderless mb-0 table-with-checkbox">
+                           <thead class="bg-light">
+                              <tr>
+                                 <th style="width: 30px;">
+                                    <div class="form-check">
+                                       <input class="form-check-input" type="checkbox" id="checkAll" />
+                                    </div>
+                                 </th>
+                                 <th style="width: 80px;">Image</th>
+                                 <th>Product Name</th>
+                                 <th>Subcategory</th>
+                                 <th>Status</th>
+                                 <th>Price</th>
+                                 <th>Created</th>
+                                 <th class="text-end">Actions</th>
+                              </tr>
+                           </thead>
+                           <tbody>
+                              {% if products %}
+                              {% for p in products %}
+                              <tr {% if p.disapprove_reason %} data-bs-toggle="tooltip" title="{{ p.disapprove_reason }}" {% endif %}>
+                                 <td>
+                                    <div class="form-check">
+                                       <input class="form-check-input product-checkbox" type="checkbox" name="selected_products" value="{{ p.id }}">
+                                    </div>
+                                 </td>
+                                 <td>
+                                    {% if p.main_image %}
+                                       <img src="/media/{{ p.main_image }}" alt="{{ p.title }}" class="icon-shape icon-md rounded-2" />
+                                    {% else %}
+                                       <img src="{% static 'assets/images/placeholder.png' %}" alt="No image" class="icon-shape icon-md rounded-2" />
+                                    {% endif %}
+                                 </td>
+                                 <td>{{ p.title }}</td>
+                                 <td>{{ p.subcategory_name|default:"—" }}</td>
+                                 <td>
+                                    {% if p.pending_approval %}
+                                       <span class="badge bg-warning text-dark">Pending Approval</span>
+                                    {% elif p.approved %}
+                                       <span class="badge bg-success">Approved</span>
+                                    {% elif p.disapproved %}
+                                       <span class="badge bg-danger">Disapproved</span>
+                                    {% else %}
+                                       <span class="badge bg-secondary">Unknown</span>
+                                    {% endif %}
+                                 </td>
+                                 <td>₹{{ p.price|floatformat:2 }}</td>
+                                 <td>{{ p.created_at|date:"d M Y" }}</td>
+                                 <td class="text-end">
+                                    <div class="dropdown">
+                                       <a href="#" class="text-reset" data-bs-toggle="dropdown" aria-expanded="false">
+                                          <i class="feather-icon icon-more-vertical fs-5"></i>
+                                       </a>
+                                       <ul class="dropdown-menu dropdown-menu-end">
+                                          <li>
+                                             <a class="dropdown-item" href="{% url 'edit-product' p.id %}">
+                                                <i class="bi bi-pencil-square me-2"></i>Edit
+                                             </a>
+                                          </li>
+                                          <li>
+                                             <a class="dropdown-item text-danger" href="{% url 'delete-product' p.id %}"
+                                                onclick="return confirm('Are you sure you want to delete this product?')">
+                                                <i class="bi bi-trash me-2"></i>Delete
+                                             </a>
+                                          </li>
+                                       </ul>
+                                    </div>
+                                 </td>
+                              </tr>
+                              {% endfor %}
+                              {% else %}
+                              <tr>
+                                 <td colspan="8" class="text-center py-4 text-muted">No products found in this category.</td>
+                              </tr>
+                              {% endif %}
+                           </tbody>
+                        </table>
+                     </div>
+                  </div>
+
+                  <!-- Pagination -->
+                  {% if total_pages > 1 %}
+                  <div class="border-top d-md-flex justify-content-between align-items-center px-6 py-4">
+                     <span>Showing {{ products|length }} of {{ total }} entries</span>
+                     <nav>
+                        <ul class="pagination mb-0">
+                           {% if page > 1 %}
+                           <li class="page-item">
+                              <a class="page-link" href="?page={{ page|add:-1 }}">Previous</a>
+                           </li>
+                           {% else %}
+                           <li class="page-item disabled"><a class="page-link">Previous</a></li>
+                           {% endif %}
+
+                           {% for i in 1|to:total_pages %}
+                           <li class="page-item {% if i == page %}active{% endif %}">
+                              <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                           </li>
                            {% endfor %}
 
-                           {% else %}
-                           <tr>
-                              <td colspan="8" class="text-center py-4 text-muted">No products found in this category.
-                              </td>
-                           </tr>
-                           {% endif %}
-                        </tbody>
-                     </table>
-                  </div>
-               </div>
-
-               <!-- Pagination -->
-               {% if total_pages > 1 %}
-               <div class="border-top d-md-flex justify-content-between align-items-center px-6 py-4">
-                  <span>Showing {{ products|length }} of {{ total }} entries</span>
-                  <nav>
-                     <ul class="pagination mb-0">
-                        {% if page > 1 %}
-                        <li class="page-item">
-                           <a class="page-link" href="?page={{ page|add:-1 }}">Previous</a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled"><a class="page-link">Previous</a></li>
-                        {% endif %}
-
-                        {% for i in 1|to:total_pages %}
-                        <li class="page-item {% if i == page %}active{% endif %}">
-                           <a class="page-link" href="?page={{ i }}">{{ i }}</a>
-                        </li>
-                        {% endfor %}
-
-                        {% if page < total_pages %} <li class="page-item">
-                           <a class="page-link" href="?page={{ page|add:1 }}">Next</a>
-                           </li>
+                           {% if page < total_pages %}
+                           <li class="page-item"><a class="page-link" href="?page={{ page|add:1 }}">Next</a></li>
                            {% else %}
                            <li class="page-item disabled"><a class="page-link">Next</a></li>
                            {% endif %}
-                     </ul>
-                  </nav>
+                        </ul>
+                     </nav>
+                  </div>
+                  {% endif %}
                </div>
-               {% endif %}
             </div>
          </div>
-      </div>
+      </form>
    </div>
 </main>
 
+<!-- ✅ Tooltip & Checkbox Script -->
 <script>
-   document.addEventListener("DOMContentLoaded", function () {
-      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-      tooltipTriggerList.map(function (tooltipTriggerEl) {
-         return new bootstrap.Tooltip(tooltipTriggerEl)
-      })
-   })
-</script>
+document.addEventListener("DOMContentLoaded", function () {
+   // Bootstrap tooltips
+   var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+   tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+   });
 
+   // Select all / deselect all
+   const checkAll = document.getElementById("checkAll");
+   const checkboxes = document.querySelectorAll(".product-checkbox");
+   const deleteBtn = document.getElementById("deleteSelectedBtn");
+
+   if (checkAll) {
+      checkAll.addEventListener("change", function () {
+         checkboxes.forEach(cb => cb.checked = this.checked);
+         toggleDeleteButton();
+      });
+   }
+
+   checkboxes.forEach(cb => cb.addEventListener("change", toggleDeleteButton));
+
+   function toggleDeleteButton() {
+      const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+      deleteBtn.disabled = !anyChecked;
+   }
+});
+</script>
 
 {% endblock %}
