@@ -74,45 +74,43 @@
 	</div>
 </main>
 
-<!-- Upgrade Modal -->
+<!-- Limit Reached Modal -->
 <div class="modal fade" id="upgradePlanModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content p-4">
-      <div class="modal-header border-0">
-        <h5 class="modal-title fw-bold"> Upgrade Your Plan</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="mb-3">You’ve reached your product upload limit. Choose a plan below:</p>
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-body text-center p-5">
 
-        {% for p in all_plans %}
-        <div class="border rounded-3 p-3 mb-3">
-          <h6 class="fw-semibold text-primary">{{ p.plan_name }}</h6>
-          <p class="mb-1"><i class="fa fa-credit-card-alt" aria-hidden="true"></i> Price: ₹{{ p.price }}</p>
-          <p class="mb-1"><i class="fa fa-shopping-cart" aria-hidden="true"></i> Product Limit: {{ p.product_limit }}</p>
-          {% if p.description %}
-            <p class="small text-muted">{{ p.description }}</p>
-          {% endif %}
-          <a href="{% url 'payment' %}?plan_id={{ p.id }}" class="btn btn-outline-danger btn-sm mt-2 w-100">
-            Select {{ p.plan_name }}
-          </a>
+        <!-- Icon -->
+        <div class="mb-3">
+          <i class="bi bi-exclamation-triangle-fill text-warning fs-1"></i>
         </div>
-        {% empty %}
-        <p class="text-muted">No plans available right now.</p>
-        {% endfor %}
+
+        <!-- Title -->
+        <h4 class="fw-bold text-primary mb-3">Product Limit Reached</h4>
+
+        <!-- Message -->
+        <p class="text-muted mb-4">
+          You’ve reached the maximum number of products allowed in your current plan.<br>
+          Please upgrade your plan to continue adding new products. <br>
+		  In this free version, you can upload up to <font class="fw-bold text-danger">25 products</font>  only.
+        </p>
+
+        <!-- Button -->
+        <a href="{% url 'payment' %}" class="btn btn-info w-100 py-2 fw-semibold rounded-pill">
+          <i class="bi bi-credit-card me-2"></i> Go to Payment Page
+        </a>
       </div>
     </div>
   </div>
 </div>
 
 
+
+
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     {% if messages %}
     {% for message in messages %}
-      {% comment %}
-      Sometimes message.message doesn’t render as plain text — use striptags to match.
-      {% endcomment %}
       {% if "limit" in message.message|striptags or "plan" in message.message|striptags %}
         const modalEl = document.getElementById('upgradePlanModal');
         if (modalEl) {
@@ -123,6 +121,7 @@ document.addEventListener("DOMContentLoaded", function() {
     {% endfor %}
     {% endif %}
 });
+
 </script>
 
 

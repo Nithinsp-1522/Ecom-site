@@ -21,6 +21,16 @@ urlpatterns = [
     path('order-details/', views.order_details, name='order-details'),
     path('payment-method/', views.payment_method, name='payment-method'),
     path('rewards/', views.rewards, name='rewards'),
+    path('search/', views.search_products, name='search'),
+    
+    # cart URLs
+    path("cart/", views.cart, name="cart"),
+    path("add-to-cart/<int:product_id>/", views.add_to_cart, name="add-to-cart"),
+    path("update-cart/", views.update_cart_quantity, name="update-cart"),
+    path("remove-cart/<int:cart_id>/", views.remove_cart_item, name="remove-cart"),
+    path("mini-cart-data/", views.mini_cart_data, name="mini-cart-data"),
+    path("buy-now/<int:product_id>/", views.buy_now, name="buy-now"),
+
 
 
 
@@ -66,6 +76,8 @@ urlpatterns = [
     path("toggle-plan-status/<int:plan_id>/", views.toggle_plan_status, name="toggle_plan_status"),
     path("delete-plan/<int:plan_id>/", views.delete_plan, name="delete_plan"),
     path("payment/", views.payment, name="payment"),
+    path('payment/success/<int:plan_id>/', views.payment_success, name='payment-success'),
+
 
     # Notification URLs
     path("admin-notifications/", views.admin_notifications, name="admin-notifications"),

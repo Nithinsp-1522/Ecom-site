@@ -21,6 +21,7 @@ from django.utils.html import strip_tags
 import pandas as pd
 from io import BytesIO
 from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 
 
 # Normalize phone numbers
@@ -221,6 +222,140 @@ def rewards(request):
     return render(request, 'user/account-Rewards.html')
 
 
+def search_products(request):
+    query = request.GET.get('q', '').strip()
+    page = int(request.GET.get('page', 1))
+    limit = 30
+    offset = (page - 1) * limit
+
+    products = []
+    total = 0
+    total_pages = 1
+    page_numbers = []
+
+    if query:
+        # ✅ Count total
+        count_row = db.selectone("""
+            SELECT COUNT(*) AS count
+            FROM products p
+            WHERE p.title LIKE %s 
+              AND p.approved = 1
+              AND p.pending_approval = 0
+              AND p.disapproved = 0
+        """, [f'%{query}%'])
+        total = count_row["count"] if count_row else 0
+        total_pages = ceil(total / limit) if total > 0 else 1
+
+        # ✅ Fetch paginated data
+        products = db.selectall(f"""
+            SELECT 
+                p.id, 
+                p.title AS name, 
+                p.price, 
+                p.sale_price,
+                (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS image
+            FROM products p
+            WHERE p.title LIKE %s 
+              AND p.approved = 1
+              AND p.pending_approval = 0
+              AND p.disapproved = 0
+            ORDER BY p.id DESC
+            LIMIT %s OFFSET %s
+        """, [f'%{query}%', limit, offset])
+
+        # ✅ Create range list for pagination
+        page_numbers = list(range(1, total_pages + 1))
+
+    return render(request, 'search_results.html', {
+        'query': query,
+        'products': products,
+        'page': page,
+        'total_pages': total_pages,
+        'total': total,
+        'page_numbers': page_numbers,
+    })
+    
+    
+# 🛒 ---------------------- CART SYSTEM ----------------------
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def cart(request):
+    """Cart full page"""
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+    items = db.selectall("""
+        SELECT c.id, c.product_id, c.quantity, 
+               p.title, p.price, p.sale_price, 
+               (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image
+        FROM cart c 
+        JOIN products p ON p.id=c.product_id
+        WHERE c.user_id=%s
+    """, (user_id,))
+    total = sum([(i["sale_price"] or i["price"]) * i["quantity"] for i in items])
+
+    context = {"items": items, "total": total}
+    context.update(get_cart_context(request))
+    return render(request, "cart.html", context)
+
+
+@csrf_exempt
+def add_to_cart(request, product_id):
+    """Add product to cart"""
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+
+    user_id = request.session["user_id"]
+    qty = int(request.POST.get("quantity", 1))
+    existing = db.selectone("SELECT * FROM cart WHERE user_id=%s AND product_id=%s", (user_id, product_id))
+    if existing:
+        db.update("UPDATE cart SET quantity=quantity+%s WHERE id=%s", (qty, existing["id"]))
+    else:
+        db.insert("INSERT INTO cart (user_id, product_id, quantity) VALUES (%s,%s,%s)", (user_id, product_id, qty))
+    return JsonResponse({"status": "success"})
+
+
+@csrf_exempt
+def update_cart_quantity(request):
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+
+    cid = request.POST.get("cart_id")
+    qty = request.POST.get("quantity")
+    db.update("UPDATE cart SET quantity=%s WHERE id=%s", (qty, cid))
+    return JsonResponse({"status": "updated"})
+
+
+@csrf_exempt
+def remove_cart_item(request, cart_id):
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+    db.delete("DELETE FROM cart WHERE id=%s", (cart_id,))
+    return JsonResponse({"status": "removed"})
+
+
+def mini_cart_data(request):
+    """Return JSON for offcanvas refresh"""
+    data = get_cart_context(request)
+    return JsonResponse(data)
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def buy_now(request, product_id):
+    """Direct purchase page (Buy Now button)"""
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    product = db.selectone("""
+        SELECT p.*, (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image
+        FROM products p WHERE p.id=%s
+    """, (product_id,))
+    if not product:
+        messages.error(request, "Product not found.")
+        return redirect("index")
+
+    return render(request, "purchase.html", {"product": product})
 
 
 
@@ -777,21 +912,24 @@ def add_products(request, category_id):
         messages.error(request, "Invalid category.")
         return redirect("products")
 
-    # ✅ Get active plan (for product limit)
-    plan = db.selectone("SELECT * FROM plans WHERE is_active=1 LIMIT 1")
-    plan_limit = plan["product_limit"] if plan else 25  # Default fallback if plan missing
+        # ✅ Product limit check
+    if admin["is_superadmin"]:
+        plan_limit = 999999  # unlimited for superadmin
+    else:
+        plan_limit = admin.get("plan_limit", 25) or 25
 
-    # ✅ Product count check
+    # ✅ Count how many products this admin already added
     product_count = db.selectone("SELECT COUNT(*) as count FROM products WHERE admin_id=%s", (admin_id,))
     current_count = product_count["count"] if product_count else 0
 
-    # ✅ Restrict normal admins (superadmin has no limit)
+    # ✅ Check limit before allowing new product
     if not admin["is_superadmin"] and current_count >= plan_limit:
         messages.error(
             request,
             f"🚫 You’ve reached your product limit ({plan_limit}). Please upgrade your plan to add more products."
         )
         return redirect("products")
+
 
     # ✅ Handle product submission
     if request.method == "POST":
@@ -1306,9 +1444,13 @@ def upload_product_excel_global(request):
     admin_id = request.session["admin_id"]
     admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
 
-    # ✅ Active plan and product count
-    plan = db.selectone("SELECT * FROM plans WHERE is_active=1 LIMIT 1")
-    plan_limit = plan["product_limit"] if plan else 25
+    # ✅ Use the admin’s personal plan limit instead of global plan
+    if admin["is_superadmin"]:
+        plan_limit = 999999  # unlimited
+    else:
+        plan_limit = admin.get("plan_limit", 25) or 25
+
+    # ✅ Count how many products the admin already added
     product_count = db.selectone("SELECT COUNT(*) AS count FROM products WHERE admin_id=%s", (admin_id,))
     current_count = product_count["count"] if product_count else 0
 
@@ -1328,23 +1470,7 @@ def upload_product_excel_global(request):
 
         total_rows = len(df)
 
-        # ✅ Strict check: reject if Excel file has more rows than plan limit
-        if not admin["is_superadmin"] and total_rows > plan_limit:
-            preview_html = (
-                df.head(5)
-                .to_html(index=False, border=0, classes="table table-bordered table-sm mb-0")
-            )
-            msg = mark_safe(
-                f"""
-                🚫 <strong>Upload rejected:</strong> Your plan allows only {plan_limit} products per file.<br>
-                This file contains <strong>{total_rows}</strong> rows.<br><br>
-                <strong>Preview of first 5 rows:</strong><br>{preview_html}
-                """
-            )
-            messages.error(request, msg)
-            return redirect("products")
-
-        # ✅ Also reject if total (existing + new) exceeds limit
+        # ✅ Reject if this upload exceeds remaining plan limit
         if not admin["is_superadmin"] and (current_count + total_rows) > plan_limit:
             remaining = plan_limit - current_count
             preview_html = (
@@ -1414,8 +1540,10 @@ def upload_product_excel_global(request):
             ]
             for col in df.columns:
                 if col not in standard_cols and pd.notna(row.get(col)):
-                    db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)",
-                              (product["id"], col, str(row[col])))
+                    db.insert(
+                        "INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)",
+                        (product["id"], col, str(row[col]))
+                    )
 
             added_count += 1
 
@@ -1423,6 +1551,7 @@ def upload_product_excel_global(request):
         return redirect("products")
 
     return redirect("products")
+
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -1443,7 +1572,7 @@ def manage_plans(request):
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def add_plan(request):
-    """Superadmin: Add new plan."""
+    """Superadmin: Add new monthly plan."""
     if "admin_id" not in request.session:
         return redirect("adminlogin")
 
@@ -1460,18 +1589,20 @@ def add_plan(request):
         description = request.POST.get("description", "")
         is_active = "is_active" in request.POST
 
-        db.insert(
-            "INSERT INTO plans (plan_name, price, product_limit, description, is_active) VALUES (%s,%s,%s,%s,%s)",
-            (plan_name, price, product_limit, description, is_active),
-        )
-        messages.success(request, f"Plan '{plan_name}' added successfully.")
+        db.insert("""
+            INSERT INTO plans (plan_name, price, product_limit, description, is_active)
+            VALUES (%s,%s,%s,%s,%s)
+        """, (plan_name, price, product_limit, description, is_active))
+
+        messages.success(request, f"✅ Plan '{plan_name}' added successfully.")
         return redirect("manage-plans")
 
     return render(request, "superadmin/add_plan.html")
 
-# ✅ Edit Plan
+
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def edit_plan(request, plan_id):
+    """Edit existing monthly plan"""
     if "admin_id" not in request.session:
         return redirect("adminlogin")
 
@@ -1493,14 +1624,17 @@ def edit_plan(request, plan_id):
         description = request.POST.get("description", "")
         is_active = "is_active" in request.POST
 
-        db.update(
-            "UPDATE plans SET plan_name=%s, price=%s, product_limit=%s, description=%s, is_active=%s WHERE id=%s",
-            (plan_name, price, product_limit, description, is_active, plan_id),
-        )
+        db.update("""
+            UPDATE plans 
+            SET plan_name=%s, price=%s, product_limit=%s, description=%s, is_active=%s 
+            WHERE id=%s
+        """, (plan_name, price, product_limit, description, is_active, plan_id))
+
         messages.success(request, f"✅ Plan '{plan_name}' updated successfully.")
         return redirect("manage-plans")
 
     return render(request, "superadmin/edit_plan.html", {"plan": plan})
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def delete_plan(request, plan_id):
@@ -1563,9 +1697,6 @@ def toggle_plan_status(request, plan_id):
     })
 
 
-
-
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def payment(request):
     """Payment page showing all available plans."""
@@ -1582,7 +1713,54 @@ def payment(request):
         "all_plans": all_plans,
         "admin": admin,
     })
+    
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def payment_success(request, plan_id):
+    """Simulate payment success and upgrade normal admin plan limit."""
+    if "admin_id" not in request.session:
+        return redirect("adminlogin")
 
+    admin_id = request.session["admin_id"]
+    admin = db.selectone("SELECT * FROM adminusers WHERE id=%s", (admin_id,))
+    if not admin:
+        messages.error(request, "Admin not found.")
+        return redirect("adminlogin")
+
+    # Superadmin skip
+    if admin["is_superadmin"]:
+        messages.info(request, "Superadmin has unlimited products.")
+        return redirect("products")
+
+    # Fetch selected plan
+    plan = db.selectone("SELECT * FROM plans WHERE id=%s", (plan_id,))
+    if not plan:
+        messages.error(request, "Invalid plan selected.")
+        return redirect("payment")
+
+    # Get current plan limit
+    current_limit = admin.get("plan_limit", 25) or 25
+
+    # Add new plan’s limit to the old total
+    new_total_limit = current_limit + plan["product_limit"]
+
+    # Update admin’s plan info
+    db.update("""
+        UPDATE adminusers
+        SET current_plan=%s,
+            plan_limit=%s,
+            plan_start=NOW(),
+            plan_active=1
+        WHERE id=%s
+    """, (plan["plan_name"], new_total_limit, admin_id))
+
+    # Record payment
+    db.insert("""
+        INSERT INTO payments (admin_id, plan_id, amount, status, created_at)
+        VALUES (%s, %s, %s, %s, NOW())
+    """, (admin_id, plan_id, plan["price"], "success"))
+
+    messages.success(request, f"✅ {plan['plan_name']} plan activated. You can now add up to {new_total_limit} products!")
+    return redirect("products")
 
 
 
@@ -1635,26 +1813,49 @@ def delete_all_notifications(request):
 
 def view_product(request, id):
     product = db.selectone("""
-        SELECT p.*, c.name AS category_name, s.name AS subcategory_name,
-               a.username AS admin_name,
-               (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN subcategories s ON p.subcategory_id = s.id
-        LEFT JOIN adminusers a ON p.admin_id = a.id
-        WHERE p.id=%s
-    """, (id,))
+    SELECT p.*, 
+           c.name AS category_name, 
+           s.name AS subcategory_name,
+           a.username AS admin_name,
+           a.organization AS admin_org,        -- ✅ added line
+           (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS main_image
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN subcategories s ON p.subcategory_id = s.id
+    LEFT JOIN adminusers a ON p.admin_id = a.id
+    WHERE p.id=%s
+""", (id,))
+
 
     images = db.selectall("SELECT * FROM product_images WHERE product_id=%s", (id,))
     attributes = db.selectall("SELECT * FROM product_attributes WHERE product_id=%s", (id,))
+    # ✅ Group attributes in pairs for display (2 per row)
+    grouped_attrs = []
+    for i in range(0, len(attributes), 2):
+        pair = attributes[i:i+2]
+        grouped_attrs.append(pair)
+    
+
+    # ✅ Related products (same category, exclude this one)
+    related_products = db.selectall("""
+        SELECT p.*, 
+               (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image,
+               c.name AS category_name,
+               s.name AS subcategory_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id=c.id
+        LEFT JOIN subcategories s ON p.subcategory_id=s.id
+        WHERE p.category_id=%s AND p.id != %s AND p.approved=1
+        LIMIT 4
+    """, (product["category_id"], id))
 
     return render(request, "shop-single.html", {
         "product": product,
         "images": images,
         "attributes": attributes,
+        "grouped_attrs": grouped_attrs,
+        "related_products": related_products,
     })
-
-
 
 def order_list(request):
     return render(request, 'superadmin/order-list.html')
