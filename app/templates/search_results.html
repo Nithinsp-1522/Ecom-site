@@ -20,6 +20,7 @@
                     <h6 class="fw-semibold text-truncate" title="{{ p.name }}">{{ p.name }}</h6>
                     <p class="text-muted mb-1">₹{{ p.price }}</p>
                     <a href="{% url 'view-product' p.id %}" class="btn btn-sm btn-primary">View</a>
+                    <button class="btn btn-sm btn-success" onclick="addToCart({{ p.id }})">Add to Cart</button>
                 </div>
             </div>
         </div>
@@ -58,4 +59,23 @@
     <p class="text-muted">No products found for "{{ query }}".</p>
     {% endif %}
 </div>
+
+<script>
+    function addToCart(pid) {
+        fetch(`/add-to-cart/${pid}/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "login_required") {
+                    alert("Please login to add items to cart!");
+                    window.location.href = "{% url 'userlogin' %}";
+                } else if (data.status === "success") {
+                    alert("✅ Product added to cart!");
+                }
+            });
+    }
+</script>
+
 {% endblock %}

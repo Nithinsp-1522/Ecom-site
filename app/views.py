@@ -6,7 +6,6 @@ import re
 import os
 from django.conf import settings
 from django.http import JsonResponse
-from django.views.decorators.cache import cache_control
 from django.core.mail import send_mail
 from django.conf import settings
 import random, string
@@ -21,7 +20,10 @@ from django.utils.html import strip_tags
 import pandas as pd
 from io import BytesIO
 from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
+from django.views.decorators.cache import cache_control
+
 
 
 # Normalize phone numbers
@@ -200,6 +202,107 @@ def userlogout(request):
     messages.success(request, "You have been logged out.")
     return redirect("userlogin")
 
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def add_to_cart(request, product_id):
+    """Add product to cart (login required)"""
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+
+    user_id = request.session["user_id"]
+    qty = int(request.POST.get("quantity", 1))
+
+    # Check if product exists
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
+    if not product:
+        return JsonResponse({"status": "error", "message": "Product not found."})
+
+    # Check if already in cart → update qty
+    existing = db.selectone(
+        "SELECT * FROM cart WHERE user_id=%s AND product_id=%s",
+        (user_id, product_id)
+    )
+
+    if existing:
+        db.update("UPDATE cart SET quantity = quantity + %s WHERE id=%s", (qty, existing["id"]))
+    else:
+        db.insert("INSERT INTO cart (user_id, product_id, quantity) VALUES (%s,%s,%s)",
+                  (user_id, product_id, qty))
+
+    return JsonResponse({"status": "success"})
+
+
+def cart(request):
+    """Show user's cart"""
+    if "user_id" not in request.session:
+        messages.warning(request, "Please login to view your cart.")
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+
+    items = db.selectall("""
+        SELECT c.id AS cart_id, p.id AS product_id, p.title, p.price, p.sale_price,
+               (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS image,
+               c.quantity
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.user_id=%s
+    """, (user_id,))
+
+    # 👉  Compute total per item so Django can render it
+    for item in items:
+        price = item["sale_price"] or item["price"]
+        item["total_price"] = price * item["quantity"]
+
+    subtotal = sum(item["total_price"] for item in items)
+    service_fee = 3 if items else 0
+    total = subtotal + service_fee
+
+    return render(request, "shop-cart.html", {
+        "items": items,
+        "subtotal": subtotal,
+        "service_fee": service_fee,
+        "total": total
+    })
+
+@csrf_exempt
+def update_cart_quantity(request, cart_id):
+    """Update or remove cart item"""
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+
+    user_id = request.session["user_id"]
+    qty = int(request.POST.get("quantity", 1))
+
+    if qty <= 0:
+        # remove item if qty=0
+        db.delete("DELETE FROM cart WHERE id=%s AND user_id=%s", (cart_id, user_id))
+        return JsonResponse({"status": "removed"})
+
+    db.update("UPDATE cart SET quantity=%s WHERE id=%s AND user_id=%s", (qty, cart_id, user_id))
+    return JsonResponse({"status": "updated"})
+
+@csrf_exempt
+def apply_promo(request):
+    """Apply promo discount"""
+    promo = request.POST.get("promo", "").strip().lower()
+    subtotal = float(request.POST.get("subtotal", 0))
+
+    discounts = {"save10": 0.10, "welcome20": 0.20, "free50": 0.50}
+
+    if promo not in discounts:
+        return JsonResponse({"status": "invalid", "message": "Invalid promo code."})
+
+    discount = subtotal * discounts[promo]
+    total = subtotal - discount
+    return JsonResponse({
+        "status": "success",
+        "discount": discount,
+        "total": total
+    })
+
+
 
 
 # user views
@@ -207,10 +310,213 @@ def userlogout(request):
 def profile(request):
     if "user_id" not in request.session:
         return redirect("userlogin")
-    return render(request, 'user/account-settings.html')
 
+    # fetch user record
+    user = db.selectone("SELECT id, first_name, last_name, email, phone FROM users WHERE id=%s", (request.session["user_id"],))
+    if not user:
+        messages.error(request, "User not found. Please login again.")
+        request.session.flush()
+        return redirect("userlogin")
+
+    return render(request, 'user/account-settings.html', {"user": user})
+
+
+@require_POST
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def update_profile(request):
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+    first_name = request.POST.get("first_name", "").strip()
+    last_name = request.POST.get("last_name", "").strip()
+    email = request.POST.get("email", "").strip()
+    phone_raw = request.POST.get("phone", "").strip()
+    phone = normalize_phone(phone_raw)
+
+    # validate email/phone uniqueness (exclude current user)
+    if email:
+        existing = db.selectone("SELECT id FROM users WHERE email=%s AND id!=%s", (email, user_id))
+        if existing:
+            messages.error(request, "Email already in use by another account.")
+            return redirect("profile")
+
+    if phone:
+        existing = db.selectone("SELECT id FROM users WHERE phone=%s AND id!=%s", (phone, user_id))
+        if existing:
+            messages.error(request, "Phone already in use by another account.")
+            return redirect("profile")
+
+    db.update("""
+        UPDATE users
+        SET first_name=%s, last_name=%s, email=%s, phone=%s
+        WHERE id=%s
+    """, (first_name, last_name, email, phone, user_id))
+
+    # update session display name
+    request.session["user_name"] = f"{first_name} {last_name}".strip()
+    messages.success(request, "Profile updated successfully.")
+    return redirect("profile")
+
+
+@require_POST
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def change_password(request):
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+    current_password = request.POST.get("current_password", "").strip()
+    new_password = request.POST.get("new_password", "").strip()
+    confirm_password = request.POST.get("confirm_password", "").strip()
+
+    if not new_password or not confirm_password:
+        messages.error(request, "Please enter the new password and confirmation.")
+        return redirect("profile")
+
+    if new_password != confirm_password:
+        messages.error(request, "New password and confirmation do not match.")
+        return redirect("profile")
+
+    user = db.selectone("SELECT * FROM users WHERE id=%s", (user_id,))
+    if not user or not check_password(current_password, user["password"]):
+        messages.error(request, "Current password is incorrect.")
+        return redirect("profile")
+
+    hashed = make_password(new_password)
+    db.update("UPDATE users SET password=%s WHERE id=%s", (hashed, user_id))
+    messages.success(request, "Password updated successfully.")
+    return redirect("profile")
+
+
+@require_POST
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def delete_account(request):
+    """
+    Permanently delete the logged-in user's account.
+    Requires current password POSTed as 'current_password'.
+    """
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+    current_password = request.POST.get("current_password", "").strip()
+
+    user = db.selectone("SELECT * FROM users WHERE id=%s", (user_id,))
+    if not user:
+        messages.error(request, "User not found.")
+        return redirect("userlogin")
+
+    # verify password
+    if not check_password(current_password, user["password"]):
+        messages.error(request, "Current password is incorrect.")
+        return redirect("profile")
+
+    # Remove related user data (best-effort; adjust table names if you use different ones)
+    try:
+        db.delete("DELETE FROM cart WHERE user_id=%s", (user_id,))
+        db.delete("DELETE FROM addresses WHERE user_id=%s", (user_id,))
+        db.delete("DELETE FROM orders WHERE user_id=%s", (user_id,))
+        db.delete("DELETE FROM order_items WHERE user_id=%s", (user_id,))  # if you have this
+        db.delete("DELETE FROM notifications WHERE user_id=%s", (user_id,))
+        db.delete("DELETE FROM wishlist WHERE user_id=%s", (user_id,))
+        db.delete("DELETE FROM product_reviews WHERE user_id=%s", (user_id,))
+    except Exception:
+        # If some of those tables don't exist in your schema, ignore and continue.
+        pass
+
+    # Finally delete user row
+    db.delete("DELETE FROM users WHERE id=%s", (user_id,))
+
+    # clear session and redirect to home with message
+    request.session.flush()
+    messages.success(request, "Your account and related data have been deleted.")
+    return redirect("index")
+
+
+@csrf_protect
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def address(request):
-    return render(request, 'user/account-address.html')
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+
+    # ✅ Add or Update Address
+    if request.method == "POST":
+        addr_id = request.POST.get("address_id")
+        first_name = request.POST.get("first_name")
+        last_name = request.POST.get("last_name")
+        address_line1 = request.POST.get("address_line1")
+        address_line2 = request.POST.get("address_line2")
+        city = request.POST.get("city")
+        state = request.POST.get("state")
+        country = request.POST.get("country")
+        zip_code = request.POST.get("zip_code")
+        phone = request.POST.get("phone")
+        is_default = True if request.POST.get("is_default") == "on" else False
+
+        if is_default:
+            db.update("UPDATE addresses SET is_default=FALSE WHERE user_id=%s", (user_id,))
+
+        if addr_id:
+            db.update("""
+                UPDATE addresses
+                SET first_name=%s, last_name=%s, address_line1=%s, address_line2=%s,
+                    city=%s, state=%s, country=%s, zip_code=%s, phone=%s, is_default=%s
+                WHERE id=%s AND user_id=%s
+            """, (
+                first_name, last_name, address_line1, address_line2,
+                city, state, country, zip_code, phone, is_default,
+                addr_id, user_id
+            ))
+            messages.success(request, "Address updated successfully.")
+        else:
+            db.insert("""
+                INSERT INTO addresses
+                (user_id, first_name, last_name, address_line1, address_line2,
+                 city, state, country, zip_code, phone, is_default)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                user_id, first_name, last_name, address_line1, address_line2,
+                city, state, country, zip_code, phone, is_default
+            ))
+            messages.success(request, "Address added successfully.")
+        return redirect("address")
+
+    # ✅ Delete Address
+    if request.GET.get("delete"):
+        addr_id = request.GET.get("delete")
+        db.delete("DELETE FROM addresses WHERE id=%s AND user_id=%s", (addr_id, user_id))
+        messages.success(request, "Address deleted successfully.")
+        return redirect("address")
+
+    # ✅ Set Default Address
+    if request.GET.get("default"):
+        addr_id = request.GET.get("default")
+        db.update("UPDATE addresses SET is_default=FALSE WHERE user_id=%s", (user_id,))
+        db.update("UPDATE addresses SET is_default=TRUE WHERE id=%s AND user_id=%s", (addr_id, user_id))
+        messages.success(request, "Default address updated.")
+        return redirect("address")
+
+    # ✅ Fetch addresses
+    addresses = db.selectall(
+        "SELECT * FROM addresses WHERE user_id=%s ORDER BY is_default DESC, id DESC",
+        (user_id,)
+    )
+
+    # ✅ Editing existing address
+    edit_id = request.GET.get("edit")
+    edit_address = None
+    if edit_id:
+        edit_address = db.selectone("SELECT * FROM addresses WHERE id=%s AND user_id=%s", (edit_id, user_id))
+
+    return render(request, "user/account-address.html", {
+        "addresses": addresses,
+        "edit_address": edit_address
+    })
+
+
 
 def order_details(request):
     return render(request, 'user/account-orders.html')
@@ -274,7 +580,12 @@ def search_products(request):
         'total': total,
         'page_numbers': page_numbers,
     })
+<<<<<<< HEAD
 
+=======
+    
+    
+>>>>>>> 19309aa (Updated project with latest changes)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def buy_now(request, product_id):
@@ -1045,6 +1356,7 @@ def edit_product(request, id):
             if name and value:
                 db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)", (id, name, value))
 
+<<<<<<< HEAD
         # ✅ Handle images (keep only selected existing ones)
     existing_ids = request.POST.getlist("existing_images[]")
 
@@ -1069,6 +1381,35 @@ def edit_product(request, id):
             filename = get_random_string(8) + "_" + img.name
             fs.save(filename, img)
             db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (id, f"products/{filename}"))
+=======
+        # ✅ Handle deleted and new images
+        keep_ids = request.POST.getlist("keep_images[]")
+
+        # Get all images for this product
+        all_images = db.selectall("SELECT id, image FROM product_images WHERE product_id=%s", (id,))
+
+        # Delete unkept images
+        for img in all_images:
+            if str(img["id"]) not in keep_ids:
+                # Remove file
+                image_path = os.path.join(settings.MEDIA_ROOT, img["image"])
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+                # Delete record
+                db.delete("DELETE FROM product_images WHERE id=%s", (img["id"],))
+
+        # ✅ Add new images
+        new_images = request.FILES.getlist("images")
+        if new_images:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
+            for img in new_images:
+                filename = get_random_string(8) + "_" + img.name
+                fs.save(filename, img)
+                db.insert(
+                    "INSERT INTO product_images (product_id, image) VALUES (%s,%s)",
+                    (id, f"products/{filename}")
+                )
+>>>>>>> 19309aa (Updated project with latest changes)
 
 
         messages.success(request, f"Product '{title}' updated successfully!")
@@ -1623,6 +1964,8 @@ def delete_plan(request, plan_id):
         messages.error(request, "Access denied.")
         return redirect("admin-home")
 
+
+
     # 🔹 Fetch the plan
     plan = db.selectone("SELECT * FROM plans WHERE id=%s", (plan_id,))
 
@@ -1642,7 +1985,6 @@ def delete_plan(request, plan_id):
     db.delete("DELETE FROM plans WHERE id=%s", (plan_id,))
     messages.success(request, f" Plan '{plan['plan_name']}' deleted successfully.")
     return redirect("manage-plans")
-
 
 
 

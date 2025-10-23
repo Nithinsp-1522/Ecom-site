@@ -14,19 +14,32 @@ urlpatterns = [
     path('user-categories', views.user_categories, name='user-categories'),
     path('category/<int:category_id>/', views.category_products, name='category-products'),
     path('category-products/', views.category_products, name='category-products'),
+    path('cart/', views.cart, name='cart'),
     
     # User URLs
-    path('profile/', views.profile, name='profile'),
+    path('profile/', views.profile, name='profile'),  
+    path('profile/update/', views.update_profile, name='update_profile'),
+    path('profile/change-password/', views.change_password, name='change_password'),
+    path('profile/delete/', views.delete_account, name='delete_account'),
+
+    
     path('address/', views.address, name='address'),
     path('order-details/', views.order_details, name='order-details'),
     path('payment-method/', views.payment_method, name='payment-method'),
     path('rewards/', views.rewards, name='rewards'),
     path('search/', views.search_products, name='search'),
+<<<<<<< HEAD
     
     # cart URLs
+=======
+>>>>>>> 19309aa (Updated project with latest changes)
     path("buy-now/<int:product_id>/", views.buy_now, name="buy-now"),
 
-
+    # Cart URLs
+    path('add-to-cart/<int:product_id>/', views.add_to_cart, name="add-to-cart"),
+    path('update-cart/<int:cart_id>/', views.update_cart_quantity, name="update-cart"),
+    path('apply-promo/', views.apply_promo, name="apply-promo"),
+    
 
 
     # Admin URLs can be added here

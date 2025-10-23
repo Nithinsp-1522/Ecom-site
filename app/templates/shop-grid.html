@@ -159,17 +159,10 @@
                               {% endif %}
                            </div>
                            <div>
-                              <a href="javascript:void(0);" 
-   class="btn btn-primary btn-sm" 
-   onclick="addToCart({{ product.id }})">
-   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-      stroke-linejoin="round" class="feather feather-plus">
-      <line x1="12" y1="5" x2="12" y2="19"></line>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-   </svg>
-   Add
-</a>
+                             <a href="javascript:void(0);" 
+   class="btn btn-primary btn-sm"
+   onclick="addToCart({{ product.id }})">Add</a>
+
 
                            </div>
                         </div>
@@ -309,5 +302,24 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
+
+<script>
+function addToCart(pid) {
+  fetch(`/add-to-cart/${pid}/`, {
+    method: "POST",
+    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === "login_required") {
+      alert("Please login to add items to cart!");
+      window.location.href = "{% url 'userlogin' %}";
+    } else if (data.status === "success") {
+      alert("✅ Product added to cart!");
+    }
+  });
+}
+</script>
+
 
 {% endblock %}

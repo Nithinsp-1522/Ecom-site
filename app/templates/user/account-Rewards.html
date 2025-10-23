@@ -1,108 +1,74 @@
 {% extends "user/userbase.html" %}
-{% block title %}Notification Settings - Thrayam{% endblock %}
+{% load static %}
+{% block title %}My Rewards - Thrayam{% endblock %}
 {% block content %}
-                  <div class="col-lg-9 col-md-8 col-12">
-                     <div class="py-6 p-md-6 p-lg-10">
-                        <div class="mb-6">
-                           <!-- heading -->
-                           <h2 class="mb-0">Notification settings</h2>
-                        </div>
+<div class="col-lg-9 col-md-8 col-12">
+  <div class="py-6 p-md-6 p-lg-10">
 
-                        <div class="mb-10">
-                           <!-- text -->
-                           <div class="border-bottom pb-3 mb-5">
-                              <h5 class="mb-0">Email Notifications</h5>
-                           </div>
-                           <!-- text -->
-                           <div class="d-flex justify-content-between align-items-center mb-6">
-                              <div>
-                                 <h6 class="mb-1">Weekly Notification</h6>
-                                 <p class="mb-0">Various versions have evolved over the years, sometimes by accident, sometimes on purpose .</p>
-                              </div>
-                              <!-- checkbox -->
-                              <div class="form-check form-switch">
-                                 <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" />
-                                 <label class="form-check-label" for="flexSwitchCheckDefault"></label>
-                              </div>
-                           </div>
-                           <div class="d-flex justify-content-between align-items-center">
-                              <!-- text -->
-                              <div>
-                                 <h6 class="mb-1">Account Summary</h6>
-                                 <p class="mb-0 pe-12">
-                                    Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis eguris eu sollicitudin massa. Nulla ipsum odio, aliquam in odio et, fermentum
-                                    blandit nulla.
-                                 </p>
-                              </div>
-                              <!-- form checkbox -->
-                              <div class="form-check form-switch">
-                                 <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckChecked" checked />
-                                 <label class="form-check-label" for="flexSwitchCheckChecked"></label>
-                              </div>
-                           </div>
-                        </div>
-                        <div class="mb-10">
-                           <!-- heading -->
-                           <div class="border-bottom pb-3 mb-5">
-                              <h5 class="mb-0">Order updates</h5>
-                           </div>
-                           <div class="d-flex justify-content-between align-items-center mb-6">
-                              <div>
-                                 <!-- heading -->
-                                 <h6 class="mb-0">Text messages</h6>
-                              </div>
-                              <!-- form checkbox -->
-                              <div class="form-check form-switch">
-                                 <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault2" />
-                                 <label class="form-check-label" for="flexSwitchCheckDefault2"></label>
-                              </div>
-                           </div>
-                           <!-- text -->
-                           <div class="d-flex justify-content-between align-items-center">
-                              <div>
-                                 <h6 class="mb-1">Call before checkout</h6>
-                                 <p class="mb-0">We'll only call if there are pending changes</p>
-                              </div>
-                              <!-- form checkbox -->
-                              <div class="form-check form-switch">
-                                 <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckChecked2" checked />
-                                 <label class="form-check-label" for="flexSwitchCheckChecked2"></label>
-                              </div>
-                           </div>
-                        </div>
-                        <div class="mb-6">
-                           <!-- text -->
-                           <div class="border-bottom pb-3 mb-5">
-                              <h5 class="mb-0">Website Notification</h5>
-                           </div>
-                           <div>
-                              <!-- form checkbox -->
-                              <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="flexCheckFollower" checked />
-                                 <label class="form-check-label" for="flexCheckFollower">New Follower</label>
-                              </div>
-                              <!-- form checkbox -->
-                              <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="flexCheckPost" />
-                                 <label class="form-check-label" for="flexCheckPost">Post Like</label>
-                              </div>
-                              <!-- form checkbox -->
-                              <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="flexCheckPosted" />
-                                 <label class="form-check-label" for="flexCheckPosted">Someone you followed posted</label>
-                              </div>
-                              <!-- form checkbox -->
-                              <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="flexCheckCollection" />
-                                 <label class="form-check-label" for="flexCheckCollection">Post added to collection</label>
-                              </div>
-                              <!-- form checkbox -->
-                              <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="flexCheckOrder" />
-                                 <label class="form-check-label" for="flexCheckOrder">Order Delivery</label>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
+    <!-- SuperCoin Section -->
+    <div class="text-center mb-8">
+      <h2 class="fw-bold mb-3">SuperCoins</h2>
+
+      <div class="p-4 bg-light border rounded-3 shadow-sm d-inline-block">
+        <div class="d-flex align-items-center justify-content-center gap-3">
+           <img 
+            src="{% static 'assets/images/icons/Supercoin.png' %}" 
+            alt="SuperCoin" 
+            width="70" 
+            class="me-2" 
+            style="filter: drop-shadow(0 0 5px gold); border-radius: 50%;"
+          >
+          <div>
+            <h1 class="text-warning mb-0 display-4 fw-bold">0</h1>
+            <p class="text-muted mb-0">SuperCoins Balance</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coupons Section -->
+    <div class="border-top pt-5">
+      <h4 class="fw-semibold mb-4">Available Coupons</h4>
+
+      <div class="row g-4">
+        <!-- Demo Coupon 1 -->
+        <div class="col-md-6 col-lg-4">
+          <div class="border rounded-3 p-4 bg-white shadow-sm h-100">
+            <div class="d-flex align-items-center mb-3">
+              <img src="https://cdn-icons-png.flaticon.com/512/906/906343.png" alt="coupon" width="40" class="me-2">
+              <h6 class="mb-0 fw-semibold">FLAT ₹100 OFF</h6>
+            </div>
+            <p class="text-muted small mb-2">On orders above ₹999</p>
+            <span class="badge bg-success">Use Code: SAVE100</span>
+          </div>
+        </div>
+
+        <!-- Demo Coupon 2 -->
+        <div class="col-md-6 col-lg-4">
+          <div class="border rounded-3 p-4 bg-white shadow-sm h-100">
+            <div class="d-flex align-items-center mb-3">
+              <img src="https://cdn-icons-png.flaticon.com/512/679/679720.png" alt="coupon" width="40" class="me-2">
+              <h6 class="mb-0 fw-semibold">20% OFF</h6>
+            </div>
+            <p class="text-muted small mb-2">On fashion & accessories</p>
+            <span class="badge bg-info text-dark">Use Code: STYLE20</span>
+          </div>
+        </div>
+
+        <!-- Demo Coupon 3 -->
+        <div class="col-md-6 col-lg-4">
+          <div class="border rounded-3 p-4 bg-white shadow-sm h-100">
+            <div class="d-flex align-items-center mb-3">
+              <img src="https://cdn-icons-png.flaticon.com/512/888/888879.png" alt="coupon" width="40" class="me-2">
+              <h6 class="mb-0 fw-semibold">FREE DELIVERY</h6>
+            </div>
+            <p class="text-muted small mb-2">On your next 3 orders</p>
+            <span class="badge bg-primary">Use Code: FREESHIP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 {% endblock %}
