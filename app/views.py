@@ -580,12 +580,9 @@ def search_products(request):
         'total': total,
         'page_numbers': page_numbers,
     })
-<<<<<<< HEAD
 
-=======
     
     
->>>>>>> 19309aa (Updated project with latest changes)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def buy_now(request, product_id):
@@ -1356,7 +1353,6 @@ def edit_product(request, id):
             if name and value:
                 db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)", (id, name, value))
 
-<<<<<<< HEAD
         # ✅ Handle images (keep only selected existing ones)
     existing_ids = request.POST.getlist("existing_images[]")
 
@@ -1381,35 +1377,6 @@ def edit_product(request, id):
             filename = get_random_string(8) + "_" + img.name
             fs.save(filename, img)
             db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (id, f"products/{filename}"))
-=======
-        # ✅ Handle deleted and new images
-        keep_ids = request.POST.getlist("keep_images[]")
-
-        # Get all images for this product
-        all_images = db.selectall("SELECT id, image FROM product_images WHERE product_id=%s", (id,))
-
-        # Delete unkept images
-        for img in all_images:
-            if str(img["id"]) not in keep_ids:
-                # Remove file
-                image_path = os.path.join(settings.MEDIA_ROOT, img["image"])
-                if os.path.exists(image_path):
-                    os.remove(image_path)
-                # Delete record
-                db.delete("DELETE FROM product_images WHERE id=%s", (img["id"],))
-
-        # ✅ Add new images
-        new_images = request.FILES.getlist("images")
-        if new_images:
-            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
-            for img in new_images:
-                filename = get_random_string(8) + "_" + img.name
-                fs.save(filename, img)
-                db.insert(
-                    "INSERT INTO product_images (product_id, image) VALUES (%s,%s)",
-                    (id, f"products/{filename}")
-                )
->>>>>>> 19309aa (Updated project with latest changes)
 
 
         messages.success(request, f"Product '{title}' updated successfully!")

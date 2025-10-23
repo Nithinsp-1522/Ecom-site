@@ -28,11 +28,8 @@ urlpatterns = [
     path('payment-method/', views.payment_method, name='payment-method'),
     path('rewards/', views.rewards, name='rewards'),
     path('search/', views.search_products, name='search'),
-<<<<<<< HEAD
     
     # cart URLs
-=======
->>>>>>> 19309aa (Updated project with latest changes)
     path("buy-now/<int:product_id>/", views.buy_now, name="buy-now"),
 
     # Cart URLs
