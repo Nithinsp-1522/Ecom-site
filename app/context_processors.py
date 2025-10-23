@@ -46,27 +46,4 @@ def admin_context(request):
 
     return context
 
-def get_cart_context(request):
-    """Return cart count and item details for offcanvas"""
-    cart_count = 0
-    cart_items = []
-    total_amount = 0
 
-    if "user_id" in request.session:
-        user_id = request.session["user_id"]
-        cart_items = db.selectall("""
-            SELECT c.id, c.product_id, c.quantity, 
-                   p.title, p.price, p.sale_price,
-                   (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image
-            FROM cart c
-            JOIN products p ON p.id=c.product_id
-            WHERE c.user_id=%s
-        """, (user_id,))
-
-        for item in cart_items:
-            item["final_price"] = (item["sale_price"] or item["price"]) * item["quantity"]
-            total_amount += item["final_price"]
-
-        cart_count = sum([i["quantity"] for i in cart_items])
-
-    return {"cart_items": cart_items, "cart_count": cart_count, "cart_total": total_amount}

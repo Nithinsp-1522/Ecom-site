@@ -24,11 +24,6 @@ urlpatterns = [
     path('search/', views.search_products, name='search'),
     
     # cart URLs
-    path("cart/", views.cart, name="cart"),
-    path("add-to-cart/<int:product_id>/", views.add_to_cart, name="add-to-cart"),
-    path("update-cart/", views.update_cart_quantity, name="update-cart"),
-    path("remove-cart/<int:cart_id>/", views.remove_cart_item, name="remove-cart"),
-    path("mini-cart-data/", views.mini_cart_data, name="mini-cart-data"),
     path("buy-now/<int:product_id>/", views.buy_now, name="buy-now"),
 
 
@@ -62,6 +57,8 @@ urlpatterns = [
     path("download-product-template-global/", views.download_product_template_global, name="download_product_template_global"),
     path("upload-product-excel-global/", views.upload_product_excel_global, name="upload_product_excel_global"),
     path("delete-selected-products/", views.delete_selected_products, name="delete_selected_products"),
+    path("delete-product-image/<int:image_id>/", views.delete_product_image, name="delete-product-image"),
+
 
 
     

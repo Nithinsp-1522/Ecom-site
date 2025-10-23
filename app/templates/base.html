@@ -22,6 +22,91 @@
 <!-- Theme CSS -->
 <link rel="stylesheet" href="{% static 'assets/css/theme.min.css' %}" />
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-M8S4MT3EYG"></script>
+
+<style>
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* --- HERO SLIDER RESPONSIVE DESIGN --- */
+
+/* General hero style */
+.hero-slider [style*="background"] {
+  background-size: cover !important;
+  background-position: center !important;
+  border-radius: 0.5rem;
+  height: 320px;               /* desktop height */
+  display: flex;
+  align-items: center;
+  color: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Inner text wrapper */
+.hero-slider .hero-content {
+  max-width: 600px;
+  padding: 2rem 3rem;
+}
+
+/* Text styles */
+.hero-slider h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.hero-slider p {
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+/* ✅ Desktop: Left aligned text */
+@media (min-width: 992px) {
+  .hero-slider {
+    text-align: left;
+    justify-content: flex-start;
+    padding-left: 5%;
+  }
+}
+
+/* ✅ Tablet: Centered text */
+@media (max-width: 991px) and (min-width: 577px) {
+  .hero-slider {
+    justify-content: center;
+    text-align: center;
+  }
+  .hero-slider [style*="background"] {
+    height: 260px;
+  }
+  .hero-slider h2 {
+    font-size: 1.6rem;
+  }
+}
+
+/* ✅ Mobile: Smaller centered layout */
+@media (max-width: 576px) {
+  .hero-slider {
+    justify-content: center;
+    text-align: center;
+  }
+  .hero-slider [style*="background"] {
+    height: 200px;
+    padding: 1rem;
+  }
+  .hero-slider h2 {
+    font-size: 1.2rem;
+  }
+  .hero-slider p {
+    font-size: 0.9rem;
+  }
+}
+
+
+</style>
+
 <script>
    window.dataLayer = window.dataLayer || [];
    function gtag() {
@@ -477,8 +562,8 @@
                   <div class="row align-items-center">
                      <div class="col-6 col-md-6 col-lg-7">
                         <div class="d-flex">
-                           <img src="../assets/images/products/product-img-1.jpg" alt="Ecommerce"
-                              class="icon-shape icon-xxl" />
+                           <img src="" alt="Ecommerce"
+                              class="" />
                            <div class="ms-3">
                               <!-- title -->
                               <a href="shop-single.html" class="text-inherit">
@@ -696,7 +781,6 @@
    <!-- Libs JS -->
    <!-- <script src="../assets/libs/jquery/dist/jquery.min.js"></script> -->
    <script src="{% static 'assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js' %}"></script>
-   <script src="{% static 'assets/libs/simplebar/dist/simplebar.min.js' %}"></script>
 
    <!-- Theme JS -->
    <script src="{% static 'assets/js/theme.min.js' %}"></script>
@@ -811,69 +895,5 @@
       });
    </script>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-   refreshMiniCart();
-});
-
-function refreshMiniCart(){
-   fetch("/mini-cart-data/")
-   .then(res => res.json())
-   .then(data => {
-      const cartList = document.getElementById("miniCartList");
-      const badge = document.querySelector(".badge.bg-warning");
-      badge.textContent = data.cart_count || 0;
-      
-      if(!data.cart_items.length){
-         cartList.innerHTML = `<p class='text-muted text-center mt-3'>Your cart is empty</p>`;
-         return;
-      }
-
-      cartList.innerHTML = data.cart_items.map(item => `
-         <li class="list-group-item py-3 ps-0 border-top">
-            <div class="row align-items-center">
-               <div class="col-6 col-md-6 col-lg-7">
-                  <div class="d-flex">
-                     <img src="/media/${item.main_image}" class="icon-shape icon-xxl rounded" style="width:60px;height:60px;object-fit:cover;">
-                     <div class="ms-3">
-                        <h6 class="mb-0">${item.title}</h6>
-                        <div class="mt-2 small lh-1">
-                           <a href="javascript:void(0)" onclick="removeCart(${item.id})" class="text-decoration-none text-danger small">
-                              <i class="bi bi-trash"></i> Remove
-                           </a>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <div class="col-4 col-md-3 col-lg-3">
-                  <div class="input-group input-spinner">
-                     <input type="button" value="-" class="button-minus btn btn-sm" onclick="updateQty(${item.id}, ${item.quantity - 1})">
-                     <input type="number" step="1" value="${item.quantity}" class="quantity-field form-control-sm form-input" style="width:45px;" readonly>
-                     <input type="button" value="+" class="button-plus btn btn-sm" onclick="updateQty(${item.id}, ${item.quantity + 1})">
-                  </div>
-               </div>
-               <div class="col-2 text-lg-end text-start text-md-end col-md-2">
-                  <span class="fw-bold">₹${item.final_price.toFixed(2)}</span>
-               </div>
-            </div>
-         </li>
-      `).join("");
-   });
-}
-
-function updateQty(cid, qty){
-   if(qty < 1) return;
-   fetch("/update-cart/", {
-      method:"POST",
-      headers:{ "X-CSRFToken": "{{ csrf_token }}" },
-      body: new URLSearchParams({cart_id: cid, quantity: qty})
-   }).then(()=>refreshMiniCart());
-}
-
-function removeCart(cid){
-   fetch(`/remove-cart/${cid}/`, {method:"POST", headers:{ "X-CSRFToken": "{{ csrf_token }}" }})
-   .then(()=>refreshMiniCart());
-}
-</script>
 
 </body>

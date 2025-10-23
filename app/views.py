@@ -274,71 +274,6 @@ def search_products(request):
         'total': total,
         'page_numbers': page_numbers,
     })
-    
-    
-# 🛒 ---------------------- CART SYSTEM ----------------------
-
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
-def cart(request):
-    """Cart full page"""
-    if "user_id" not in request.session:
-        return redirect("userlogin")
-
-    user_id = request.session["user_id"]
-    items = db.selectall("""
-        SELECT c.id, c.product_id, c.quantity, 
-               p.title, p.price, p.sale_price, 
-               (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image
-        FROM cart c 
-        JOIN products p ON p.id=c.product_id
-        WHERE c.user_id=%s
-    """, (user_id,))
-    total = sum([(i["sale_price"] or i["price"]) * i["quantity"] for i in items])
-
-    context = {"items": items, "total": total}
-    context.update(get_cart_context(request))
-    return render(request, "cart.html", context)
-
-
-@csrf_exempt
-def add_to_cart(request, product_id):
-    """Add product to cart"""
-    if "user_id" not in request.session:
-        return JsonResponse({"status": "login_required"})
-
-    user_id = request.session["user_id"]
-    qty = int(request.POST.get("quantity", 1))
-    existing = db.selectone("SELECT * FROM cart WHERE user_id=%s AND product_id=%s", (user_id, product_id))
-    if existing:
-        db.update("UPDATE cart SET quantity=quantity+%s WHERE id=%s", (qty, existing["id"]))
-    else:
-        db.insert("INSERT INTO cart (user_id, product_id, quantity) VALUES (%s,%s,%s)", (user_id, product_id, qty))
-    return JsonResponse({"status": "success"})
-
-
-@csrf_exempt
-def update_cart_quantity(request):
-    if "user_id" not in request.session:
-        return JsonResponse({"status": "login_required"})
-
-    cid = request.POST.get("cart_id")
-    qty = request.POST.get("quantity")
-    db.update("UPDATE cart SET quantity=%s WHERE id=%s", (qty, cid))
-    return JsonResponse({"status": "updated"})
-
-
-@csrf_exempt
-def remove_cart_item(request, cart_id):
-    if "user_id" not in request.session:
-        return JsonResponse({"status": "login_required"})
-    db.delete("DELETE FROM cart WHERE id=%s", (cart_id,))
-    return JsonResponse({"status": "removed"})
-
-
-def mini_cart_data(request):
-    """Return JSON for offcanvas refresh"""
-    data = get_cart_context(request)
-    return JsonResponse(data)
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -1110,14 +1045,31 @@ def edit_product(request, id):
             if name and value:
                 db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)", (id, name, value))
 
-        # ✅ Handle new uploaded images
-        new_images = request.FILES.getlist("images")
-        if new_images:
-            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
-            for img in new_images:
-                filename = get_random_string(8) + "_" + img.name
-                fs.save(filename, img)
-                db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (id, f"products/{filename}"))
+        # ✅ Handle images (keep only selected existing ones)
+    existing_ids = request.POST.getlist("existing_images[]")
+
+    # Fetch all current images from DB
+    all_images = db.selectall("SELECT id, image FROM product_images WHERE product_id=%s", (id,))
+
+    # Delete those that are missing in POST (user removed them)
+    for img in all_images:
+        if str(img["id"]) not in existing_ids:
+            # Delete file from media folder
+            path = os.path.join(settings.MEDIA_ROOT, img["image"])
+            if os.path.exists(path):
+                os.remove(path)
+            # Delete from DB
+            db.delete("DELETE FROM product_images WHERE id=%s", (img["id"],))
+
+    # ✅ Handle newly uploaded images
+    new_images = request.FILES.getlist("images")
+    if new_images:
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
+        for img in new_images:
+            filename = get_random_string(8) + "_" + img.name
+            fs.save(filename, img)
+            db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (id, f"products/{filename}"))
+
 
         messages.success(request, f"Product '{title}' updated successfully!")
         return redirect("add-productcategory", category_id=product["category_id"])
@@ -1130,6 +1082,29 @@ def edit_product(request, id):
         "images": images,
     }
     return render(request, "superadmin/edit-product.html", context)
+
+from django.views.decorators.http import require_POST
+
+@require_POST
+def delete_product_image(request, image_id):
+    if "admin_id" not in request.session:
+        return JsonResponse({"status": "error", "message": "Login required"})
+
+    # Fetch image
+    image = db.selectone("SELECT * FROM product_images WHERE id=%s", (image_id,))
+    if not image:
+        return JsonResponse({"status": "error", "message": "Image not found"})
+
+    # Delete file from media
+    image_path = os.path.join(settings.MEDIA_ROOT, image["image"])
+    if os.path.exists(image_path):
+        os.remove(image_path)
+
+    # Delete from database
+    db.delete("DELETE FROM product_images WHERE id=%s", (image_id,))
+
+    return JsonResponse({"status": "success", "message": "Image deleted successfully"})
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def approve_product(request):
