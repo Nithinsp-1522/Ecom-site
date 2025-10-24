@@ -47,3 +47,23 @@ def admin_context(request):
     return context
 
 
+from . import db
+
+def global_counts(request):
+    """
+    Automatically inject cart_count and wishlist_count into all templates.
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"cart_count": 0, "wishlist_count": 0}
+
+    cart_result = db.selectone("SELECT COALESCE(SUM(quantity), 0) AS count FROM cart WHERE user_id=%s", (user_id,))
+    wishlist_result = db.selectone("SELECT COUNT(*) AS count FROM wishlist WHERE user_id=%s", (user_id,))
+
+    return {
+        "cart_count": cart_result["count"] if cart_result else 0,
+        "wishlist_count": wishlist_result["count"] if wishlist_result else 0,
+    }
+
+
+

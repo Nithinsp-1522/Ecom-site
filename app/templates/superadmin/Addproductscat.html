@@ -71,14 +71,28 @@
                                        <input class="form-check-input product-checkbox" type="checkbox" name="selected_products" value="{{ p.id }}">
                                     </div>
                                  </td>
+                                 <td style="position: relative;">
+   <div class="position-relative d-inline-block">
+      {% if p.main_image %}
+         <img src="/media/{{ p.main_image }}" alt="{{ p.title }}" class="icon-shape icon-md rounded-2" />
+      {% else %}
+         <img src="{% static 'assets/images/placeholder.png' %}" alt="No image" class="icon-shape icon-md rounded-2" />
+      {% endif %}
+
+      <!-- 🏷️ Stock / Sale Badge -->
+      <div class="position-absolute top-0 start-0 translate-middle-y ms-1 mt-1">
+         {% if p.stock <= 0 %}
+            <span class="badge bg-secondary">Coming Soon</span>
+         {% elif p.stock < 10 %}
+            <span class="badge bg-warning text-dark">Low Stock ({{ p.stock }})</span>
+         {% elif p.sale_price and p.sale_price|floatformat:2 < p.price|floatformat:2 %}
+            <span class="badge bg-danger">Sale</span>
+         {% endif %}
+      </div>
+   </div>
+</td>
                                  <td>
-                                    {% if p.main_image %}
-                                       <img src="/media/{{ p.main_image }}" alt="{{ p.title }}" class="icon-shape icon-md rounded-2" />
-                                    {% else %}
-                                       <img src="{% static 'assets/images/placeholder.png' %}" alt="No image" class="icon-shape icon-md rounded-2" />
-                                    {% endif %}
-                                 </td>
-                                 <td>{{ p.title }}</td>
+                                    {{ p.title }}</td>
                                  <td>{{ p.subcategory_name|default:"—" }}</td>
                                  <td>
                                     {% if p.pending_approval %}

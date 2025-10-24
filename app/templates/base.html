@@ -24,87 +24,186 @@
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-M8S4MT3EYG"></script>
 
 <style>
-html, body {
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-/* --- HERO SLIDER RESPONSIVE DESIGN --- */
-
-/* General hero style */
-.hero-slider [style*="background"] {
-  background-size: cover !important;
-  background-position: center !important;
-  border-radius: 0.5rem;
-  height: 320px;               /* desktop height */
-  display: flex;
-  align-items: center;
-  color: #000;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Inner text wrapper */
-.hero-slider .hero-content {
-  max-width: 600px;
-  padding: 2rem 3rem;
-}
-
-/* Text styles */
-.hero-slider h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.hero-slider p {
-  font-size: 1rem;
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-/* ✅ Desktop: Left aligned text */
-@media (min-width: 992px) {
-  .hero-slider {
-    text-align: left;
-    justify-content: flex-start;
-    padding-left: 5%;
-  }
-}
-
-/* ✅ Tablet: Centered text */
-@media (max-width: 991px) and (min-width: 577px) {
-  .hero-slider {
-    justify-content: center;
-    text-align: center;
-  }
-  .hero-slider [style*="background"] {
-    height: 260px;
-  }
-  .hero-slider h2 {
-    font-size: 1.6rem;
-  }
-}
-
-/* ✅ Mobile: Smaller centered layout */
-@media (max-width: 576px) {
-  .hero-slider {
-    justify-content: center;
-    text-align: center;
-  }
-  .hero-slider [style*="background"] {
-    height: 200px;
-    padding: 1rem;
-  }
-  .hero-slider h2 {
-    font-size: 1.2rem;
-  }
-  .hero-slider p {
-    font-size: 0.9rem;
-  }
-}
+   html,
+   body {
+      max-width: 100%;
+      overflow-x: hidden;
+   }
 
 
+   /* --- HERO SLIDER RESPONSIVE DESIGN --- */
+
+   /* General hero style */
+   .hero-slider [style*="background"] {
+      background-size: cover !important;
+      background-position: center !important;
+      border-radius: 0.5rem;
+      height: 320px;
+      /* desktop height */
+      display: flex;
+      align-items: center;
+      color: #000;
+      position: relative;
+      overflow: hidden;
+   }
+
+   /* Inner text wrapper */
+   .hero-slider .hero-content {
+      max-width: 600px;
+      padding: 2rem 3rem;
+   }
+
+   /* Text styles */
+   .hero-slider h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+   }
+
+   .hero-slider p {
+      font-size: 1rem;
+      color: #333;
+      margin-bottom: 1rem;
+   }
+
+   /* ✅ Desktop: Left aligned text */
+   @media (min-width: 992px) {
+      .hero-slider {
+         text-align: left;
+         justify-content: flex-start;
+         padding-left: 5%;
+      }
+   }
+
+   /* ✅ Tablet: Centered text */
+   @media (max-width: 991px) and (min-width: 577px) {
+      .hero-slider {
+         justify-content: center;
+         text-align: center;
+      }
+
+      .hero-slider [style*="background"] {
+         height: 260px;
+      }
+
+      .hero-slider h2 {
+         font-size: 1.6rem;
+      }
+   }
+
+   /* ✅ Mobile: Smaller centered layout */
+   @media (max-width: 576px) {
+      .hero-slider {
+         justify-content: center;
+         text-align: center;
+      }
+
+      .hero-slider [style*="background"] {
+         height: 200px;
+         padding: 1rem;
+      }
+
+      .hero-slider h2 {
+         font-size: 1.2rem;
+      }
+
+      .hero-slider p {
+         font-size: 0.9rem;
+      }
+   }
+
+   .badge {
+      font-size: 0.75rem;
+      border-radius: 6px;
+      padding: 0.4em 0.6em;
+   }
+
+   /* ✅ FINAL FIX — Perfect mobile alignment and visible cart badge */
+   @media (max-width: 576px) {
+
+      /* Ensure header layout stays balanced */
+      header .row.w-100.align-items-center.g-0.gx-lg-3 {
+         display: flex !important;
+         justify-content: space-between !important;
+         align-items: center !important;
+         flex-wrap: nowrap !important;
+         padding: 0.5rem 0.8rem !important;
+      }
+
+      /* Logo stays left */
+      header .navbar-brand img {
+         width: 92px !important;
+         height: auto !important;
+      }
+
+      /* Icons group (right side) */
+      header .d-flex.align-items-center.lh-1 {
+         display: flex !important;
+         align-items: center !important;
+         justify-content: flex-end !important;
+         flex-wrap: nowrap !important;
+         gap: 0.9rem !important;
+         margin-left: auto !important;
+      }
+
+      /* Username truncation fix */
+      header .fw-semibold.text-dark {
+         font-size: 0.85rem !important;
+         font-weight: 600 !important;
+         color: #333 !important;
+         max-width: 80px !important;
+         overflow: hidden !important;
+         text-overflow: ellipsis !important;
+         white-space: nowrap !important;
+      }
+
+      /* Icons sizing and alignment */
+      header .list-inline-item a svg,
+      header .list-inline-item a .bi {
+         width: 22px !important;
+         height: 22px !important;
+         vertical-align: middle !important;
+         position: relative !important;
+      }
+
+      /* ✅ Make cart and wishlist badges fully visible */
+      header .list-inline-item {
+         position: relative !important;
+      }
+
+      header .list-inline-item a .badge {
+         position: absolute !important;
+         top: -6px !important;
+         right: -10px !important;
+         z-index: 9 !important;
+         background: #ffb300 !important;
+         border: 1px solid #fff !important;
+         color: #000 !important;
+         font-size: 0.65rem !important;
+         line-height: 1 !important;
+         padding: 0.3em 0.45em !important;
+         display: inline-flex !important;
+         justify-content: center !important;
+         align-items: center !important;
+         transform: none !important;
+      }
+
+      /* Space between each icon group */
+      header .list-inline-item:not(:last-child) {
+         margin-right: 0.6rem !important;
+      }
+
+      /* Toggler spacing fix */
+      .navbar-toggler {
+         border: none !important;
+         margin-left: 0.4rem !important;
+      }
+
+      /* Prevent wrapping */
+      .d-flex.align-items-center.flex-wrap.text-nowrap {
+         flex-wrap: nowrap !important;
+      }
+   }
 </style>
 
 <script>
@@ -194,7 +293,7 @@ html, body {
 
                         </div>
                         <div class="list-inline-item">
-                           <a class="text-muted position-relative"  href="{% url 'cart' %}" role="button"
+                           <a href="{% url 'cart' %}" class="text-reset position-relative" title="My Cart" role="button"
                               aria-controls="offcanvasRight">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -203,10 +302,11 @@ html, body {
                                  <line x1="3" y1="6" x2="21" y2="6"></line>
                                  <path d="M16 10a4 4 0 0 1-8 0"></path>
                               </svg>
-                              <span
-                                 class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
-                                 0
-                                 <span class="visually-hidden">unread messages</span>
+                              <span id="cartCountBadge"
+                                 class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark shadow-sm"
+                                 style="font-size: 0.7rem; min-width: 1.3rem;">
+                                 {{ cart_count|default:0 }}
+                                 <span class="visually-hidden">cart items</span>
                               </span>
                            </a>
                         </div>
@@ -249,25 +349,29 @@ html, body {
                      <!-- login end -->
                   </div>
 
-                  <div class="list-inline-item me-5">
-                     <a href="shop-wishlist.html" class="text-reset position-relative">
+                  <!-- ❤️ Wishlist -->
+                  <div class="list-inline-item me-4">
+                     <a href="{% url 'wishlist' %}" class="text-reset position-relative" title="My Wishlist">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                            class="feather feather-heart">
-                           <path
-                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
-                           </path>
+                           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06
+               a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78
+               1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                         </svg>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
-                           0
-                           <span class="visually-hidden">unread messages</span>
+                        <span id="wishlistBadge"
+                           class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark shadow-sm"
+                           style="font-size: 0.7rem; min-width: 1.3rem;">
+                           {{ wishlist_count|default:0 }}
+                           <span class="visually-hidden">wishlist items</span>
                         </span>
                      </a>
                   </div>
 
+                  <!-- 🛒 Cart -->
                   <div class="list-inline-item">
-                     <a class="text-reset position-relative"
-                        href="{% url 'cart' %}" role="button" aria-controls="offcanvasRight">
+                     <a href="{% url 'cart' %}" class="text-reset position-relative" title="My Cart" role="button"
+                        aria-controls="offcanvasRight">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                            class="feather feather-shopping-bag">
@@ -275,12 +379,15 @@ html, body {
                            <line x1="3" y1="6" x2="21" y2="6"></line>
                            <path d="M16 10a4 4 0 0 1-8 0"></path>
                         </svg>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
-                           0
-                           <span class="visually-hidden">unread messages</span>
+                        <span id="cartCountBadge"
+                           class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark shadow-sm"
+                           style="font-size: 0.7rem; min-width: 1.3rem;">
+                           {{ cart_count|default:0 }}
+                           <span class="visually-hidden">cart items</span>
                         </span>
                      </a>
                   </div>
+
                </div>
             </div>
          </div>
@@ -430,6 +537,10 @@ html, body {
                      <li class="nav-item">
                         <a class="nav-link" href="{% url 'about' %}">About Us</a>
                      </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'shop-all' %}">All Products</a>
+                     </li>
+
 
                      <!-- <li class="nav-item dropdown">
                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Shop</a>
@@ -541,84 +652,8 @@ html, body {
          </div>
       </div>
    </div>
-   <!-- Shop Cart -->
 
-   <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
-      <div class="offcanvas-header border-bottom">
-         <div class="text-start">
-            <h5 id="offcanvasRightLabel" class="mb-0 fs-4">Shop Cart</h5>
 
-         </div>
-         <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-      </div>
-      <div class="offcanvas-body">
-         <div>
-            <!-- Cart Repeat -->
-            <ul id="miniCartList" class="list-group list-group-flush">
-               <!-- list group -->
-               <li class="list-group-item py-3 ps-0 border-top">
-                  <!-- row -->
-                  <div class="row align-items-center">
-                     <div class="col-6 col-md-6 col-lg-7">
-                        <div class="d-flex">
-                           <img src="" alt="Ecommerce"
-                              class="" />
-                           <div class="ms-3">
-                              <!-- title -->
-                              <a href="shop-single.html" class="text-inherit">
-                                 <h6 class="mb-0">Haldiram's Sev Bhujia</h6>
-                              </a>
-                              <span><small class="text-muted">.98 / lb</small></span>
-                              <!-- text -->
-                              <div class="mt-2 small lh-1">
-                                 <a href="#!" class="text-decoration-none text-inherit">
-                                    <span class="me-1 align-text-bottom">
-                                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                          stroke-linecap="round" stroke-linejoin="round"
-                                          class="feather feather-trash-2 text-success">
-                                          <polyline points="3 6 5 6 21 6"></polyline>
-                                          <path
-                                             d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                          </path>
-                                          <line x1="10" y1="11" x2="10" y2="17"></line>
-                                          <line x1="14" y1="11" x2="14" y2="17"></line>
-                                       </svg>
-                                    </span>
-                                    <span class="text-muted">Remove</span>
-                                 </a>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                     <!-- input group -->
-                     <div class="col-4 col-md-3 col-lg-3">
-                        <!-- input -->
-                        <!-- input -->
-                        <div class="input-group input-spinner">
-                           <input type="button" value="-" class="button-minus btn btn-sm" data-field="quantity" />
-                           <input type="number" step="1" max="10" value="1" name="quantity"
-                              class="quantity-field form-control-sm form-input" />
-                           <input type="button" value="+" class="button-plus btn btn-sm" data-field="quantity" />
-                        </div>
-                     </div>
-                     <!-- price -->
-                     <div class="col-2 text-lg-end text-start text-md-end col-md-2">
-                        <span class="fw-bold">$5.00</span>
-                     </div>
-                  </div>
-               </li>
-               <!-- Cart Repeat -->
-            </ul>
-
-            <!-- btn -->
-            <div class="d-flex justify-content-between mt-4">
-               <a href="#!" class="btn btn-warning" style="color: black;">Continue Shopping</a>
-
-            </div>
-         </div>
-      </div>
-   </div>
 
 
    {% block content %}
@@ -790,6 +825,8 @@ html, body {
    <script src="{% static 'assets/libs/tiny-slider/dist/min/tiny-slider.js' %}"></script>
    <script src="{% static 'assets/js/vendors/tns-slider.js' %}"></script>
    <script src="{% static 'assets/js/vendors/zoom.js' %}"></script>
+   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
    <script>
       // Auto-hide alerts after 4 seconds
@@ -894,6 +931,39 @@ html, body {
       });
    </script>
 
+   <script>
+      /* 🔄 Update Cart Badge Count Live */
+      function updateCartCount(change) {
+         const badge = document.getElementById('cartCountBadge');
+         if (badge) {
+            let count = parseInt(badge.textContent) || 0;
+            badge.textContent = Math.max(0, count + change);
+
+            // ✨ animate the badge (small bounce)
+            badge.style.transform = "scale(1.3)";
+            badge.style.transition = "transform 0.2s ease";
+            setTimeout(() => {
+               badge.style.transform = "scale(1)";
+            }, 200);
+         }
+      }
+
+      /* 🔄 Update Wishlist Badge Count Live */
+      function updateWishlistCount(change) {
+         const badge = document.getElementById('wishlistBadge');
+         if (badge) {
+            let count = parseInt(badge.textContent) || 0;
+            badge.textContent = Math.max(0, count + change);
+
+            // same animation
+            badge.style.transform = "scale(1.3)";
+            badge.style.transition = "transform 0.2s ease";
+            setTimeout(() => {
+               badge.style.transform = "scale(1)";
+            }, 200);
+         }
+      }
+   </script>
 
 
 
