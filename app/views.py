@@ -518,8 +518,30 @@ def address(request):
 
 
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def order_details(request):
-    return render(request, 'user/account-orders.html')
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+
+    # ✅ Fetch all orders with product info
+    orders = db.selectall("""
+        SELECT 
+            o.id AS order_id,
+            o.created_at,
+            o.total_amount,
+            o.payment_status,
+            p.title AS product_title,
+            (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS product_image
+        FROM orders o
+        JOIN products p ON o.product_id = p.id
+        WHERE o.user_id=%s
+        ORDER BY o.id DESC
+    """, (user_id,))
+
+    return render(request, "user/account-orders.html", {"orders": orders})
+
 
 def payment_method(request):
     return render(request, 'user/account-payment-method.html')
@@ -583,12 +605,13 @@ def search_products(request):
 
     
     
-
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def buy_now(request, product_id):
-    """Direct purchase page (Buy Now button)"""
+    """Buy Now checkout page"""
     if "user_id" not in request.session:
         return redirect("userlogin")
+
+    user_id = request.session["user_id"]
 
     product = db.selectone("""
         SELECT p.*, (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image
@@ -598,9 +621,146 @@ def buy_now(request, product_id):
         messages.error(request, "Product not found.")
         return redirect("index")
 
-    return render(request, "purchase.html", {"product": product})
+    default_address = db.selectone(
+        "SELECT * FROM addresses WHERE user_id=%s AND is_default=1 LIMIT 1", (user_id,)
+    )
+
+    # 🪙 Fetch user’s total SuperCoins
+    coins = db.selectone("""
+        SELECT COALESCE(SUM(coins_earned), 0) AS total FROM rewards WHERE user_id=%s
+    """, (user_id,))
+
+    return render(request, "purchase.html", {
+        "product": product,
+        "default_address": default_address,
+        "user_coins": coins["total"],
+    })
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def cart_checkout(request):
+    """Use the same purchase.html for multiple cart items"""
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+
+    # 🛒 Get all cart items
+    items = db.selectall("""
+        SELECT c.id AS cart_id, p.id AS product_id, p.title, p.price, p.sale_price,
+               (SELECT image FROM product_images WHERE product_id=p.id LIMIT 1) AS main_image,
+               c.quantity
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.user_id=%s
+    """, (user_id,))
+
+    if not items:
+        messages.warning(request, "Your cart is empty.")
+        return redirect("cart")
+
+    # 🧮 Calculate totals
+    subtotal = 0
+    for item in items:
+        price = item["sale_price"] or item["price"]
+        item["total_price"] = price * item["quantity"]
+        subtotal += item["total_price"]
+
+    # 🏠 Default address
+    default_address = db.selectone(
+        "SELECT * FROM addresses WHERE user_id=%s AND is_default=1 LIMIT 1", (user_id,)
+    )
+
+    # 🪙 Fetch SuperCoins
+    coins = db.selectone("""
+        SELECT COALESCE(SUM(coins_earned), 0) AS total FROM rewards WHERE user_id=%s
+    """, (user_id,))
+
+    return render(request, "purchase.html", {
+        "cart_items": items,           # list of products
+        "subtotal": subtotal,          # total price
+        "default_address": default_address,
+        "user_coins": coins["total"],
+        "is_cart_checkout": True,      # mark it as cart checkout
+    })
 
 
+@require_POST
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def demo_payment(request, product_id):
+    """Simulate payment + reward coins + SuperCoin redemption"""
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
+    if not product:
+        messages.error(request, "Product not found.")
+        return redirect("index")
+
+    amount = product["sale_price"] or product["price"]
+
+    # 🪙 Check user total SuperCoins
+    total_coins = db.selectone("""
+        SELECT COALESCE(SUM(coins_earned), 0) AS total FROM rewards WHERE user_id=%s
+    """, (user_id,))
+    available = total_coins["total"]
+
+    # 🧾 Check if user used coins (from frontend)
+    use_coins = request.POST.get("use_coins", "off") == "on"
+    discount = 0
+    if use_coins and available > 0:
+        discount = min(int(amount), available)
+        amount -= discount
+
+        # Deduct used coins (negative entry)
+        db.insert("""
+            INSERT INTO rewards (user_id, coins_earned, source)
+            VALUES (%s, %s, %s)
+        """, (user_id, -discount, f"Used {discount} coins for discount"))
+
+    # ✅ Create order
+    db.insert("""
+        INSERT INTO orders (user_id, product_id, total_amount, payment_status, created_at)
+        VALUES (%s, %s, %s, %s, NOW())
+    """, (user_id, product_id, amount, "success"))
+
+    # 🎁 Earn new coins
+    earned = int(amount // 100)
+    if earned > 0:
+        db.insert("""
+            INSERT INTO rewards (user_id, coins_earned, source)
+            VALUES (%s, %s, %s)
+        """, (user_id, earned, f"Earned from purchase ₹{amount}"))
+
+    messages.success(
+        request,
+        f"✅ Order placed! You used {discount} coins and earned {earned} new SuperCoins."
+    )
+    return redirect("order-details")
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def rewards(request):
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+
+    rewards = db.selectall("""
+        SELECT * FROM rewards 
+        WHERE user_id=%s 
+        ORDER BY created_at DESC
+    """, (user_id,))
+
+    total = db.selectone("""
+        SELECT COALESCE(SUM(coins_earned), 0) AS total_coins
+        FROM rewards WHERE user_id=%s
+    """, (user_id,))
+
+    return render(request, "user/account-Rewards.html", {
+        "rewards": rewards,
+        "total_coins": total["total_coins"],
+    })
 
 
 # Admin views
@@ -1302,33 +1462,26 @@ def delete_selected_products(request):
     return redirect("products")
 
 
-
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def edit_product(request, id):
     if "admin_id" not in request.session:
         return redirect("adminlogin")
 
-    # ✅ Fetch the product
+    # ✅ Fetch product
     product = db.selectone("SELECT * FROM products WHERE id=%s", (id,))
     if not product:
         messages.error(request, "Product not found.")
         return redirect("products")
 
-    # ✅ Fetch category + subcategories for dropdowns
+    # ✅ Fetch related data
     category = db.selectone("SELECT * FROM categories WHERE id=%s", (product["category_id"],))
     subcategories = db.selectall("SELECT id, name FROM subcategories WHERE category_id=%s", (product["category_id"],))
-
-    # ✅ Fetch custom fields (attributes)
     attributes = db.selectall("SELECT * FROM product_attributes WHERE product_id=%s", (id,))
-
-    # ✅ Fetch product images
     images = db.selectall("SELECT * FROM product_images WHERE product_id=%s", (id,))
 
     if request.method == "POST":
         title = request.POST.get("title", "")
-        subcategory_id = request.POST.get("subcategory")
-        if not subcategory_id or subcategory_id == "":
-            subcategory_id = None
+        subcategory_id = request.POST.get("subcategory") or None
         price = request.POST.get("price", "0")
         sale_price = request.POST.get("sale_price", "0")
         stock = request.POST.get("stock", "0")
@@ -1336,60 +1489,56 @@ def edit_product(request, id):
         meta_title = request.POST.get("meta_title", "")
         meta_description = request.POST.get("meta_description", "")
 
-        # ✅ Update product
+        # ✅ Update product info
         db.update("""
-    UPDATE products
-    SET title=%s, subcategory_id=%s, price=%s, sale_price=%s, stock=%s, description=%s, 
-        meta_title=%s, meta_description=%s
-    WHERE id=%s
-""", (title, subcategory_id, price, sale_price, stock, description, meta_title, meta_description, id))
+            UPDATE products
+            SET title=%s, subcategory_id=%s, price=%s, sale_price=%s, stock=%s, 
+                description=%s, meta_title=%s, meta_description=%s
+            WHERE id=%s
+        """, (title, subcategory_id, price, sale_price, stock, description, meta_title, meta_description, id))
 
-
-        # ✅ Delete old custom fields, then re-insert
+        # ✅ Handle custom fields
         db.delete("DELETE FROM product_attributes WHERE product_id=%s", (id,))
-        field_names = request.POST.getlist("field_name[]")
-        field_values = request.POST.getlist("field_value[]")
-        for name, value in zip(field_names, field_values):
-            if name and value:
-                db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)", (id, name, value))
+        names = request.POST.getlist("field_name[]")
+        values = request.POST.getlist("field_value[]")
+        for n, v in zip(names, values):
+            if n and v:
+                db.insert("INSERT INTO product_attributes (product_id, field_name, field_value) VALUES (%s,%s,%s)",
+                          (id, n, v))
 
-        # ✅ Handle images (keep only selected existing ones)
-    existing_ids = request.POST.getlist("existing_images[]")
+        # ✅ Handle image logic
+        keep_ids = request.POST.getlist("keep_images[]")
+        existing = db.selectall("SELECT id, image FROM product_images WHERE product_id=%s", (id,))
 
-    # Fetch all current images from DB
-    all_images = db.selectall("SELECT id, image FROM product_images WHERE product_id=%s", (id,))
+        for img in existing:
+            if str(img["id"]) not in keep_ids:
+                path = os.path.join(settings.MEDIA_ROOT, img["image"])
+                if os.path.exists(path):
+                    os.remove(path)
+                db.delete("DELETE FROM product_images WHERE id=%s", (img["id"],))
 
-    # Delete those that are missing in POST (user removed them)
-    for img in all_images:
-        if str(img["id"]) not in existing_ids:
-            # Delete file from media folder
-            path = os.path.join(settings.MEDIA_ROOT, img["image"])
-            if os.path.exists(path):
-                os.remove(path)
-            # Delete from DB
-            db.delete("DELETE FROM product_images WHERE id=%s", (img["id"],))
+        # ✅ Add new images (append)
+        new_imgs = request.FILES.getlist("images")
+        if new_imgs:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
+            for img in new_imgs:
+                filename = get_random_string(8) + "_" + img.name
+                fs.save(filename, img)
+                db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)",
+                          (id, f"products/{filename}"))
 
-    # ✅ Handle newly uploaded images
-    new_images = request.FILES.getlist("images")
-    if new_images:
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "products"))
-        for img in new_images:
-            filename = get_random_string(8) + "_" + img.name
-            fs.save(filename, img)
-            db.insert("INSERT INTO product_images (product_id, image) VALUES (%s,%s)", (id, f"products/{filename}"))
-
-
-        messages.success(request, f"Product '{title}' updated successfully!")
+        messages.success(request, f"✅ Product '{title}' updated successfully!")
         return redirect("add-productcategory", category_id=product["category_id"])
 
-    context = {
+    # ✅ Render edit form with existing images
+    return render(request, "superadmin/edit-product.html", {
         "product": product,
         "category": category,
         "subcategories": subcategories,
         "attributes": attributes,
         "images": images,
-    }
-    return render(request, "superadmin/edit-product.html", context)
+    })
+
 
 from django.views.decorators.http import require_POST
 

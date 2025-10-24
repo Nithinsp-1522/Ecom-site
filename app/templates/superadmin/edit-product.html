@@ -29,8 +29,8 @@
                     <label class="form-label">Subcategory</label>
                     <select name="subcategory" class="form-select">
                         {% for sub in subcategories %}
-                        <option value="{{ sub.id }}" {% if sub.id == product.subcategory_id %}selected{% endif %}>{{
-                            sub.name }}</option>
+                        <option value="{{ sub.id }}" {% if sub.id == product.subcategory_id %}selected{% endif %}>
+                            {{ sub.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -56,28 +56,30 @@
                     <textarea name="description" id="descriptionInput" class="form-control" rows="6"
                         placeholder="Product Description">{{ product.description }}</textarea>
                 </div>
-
+            
                 <div class="mb-3 col-lg-12">
-    <label class="form-label">Current Images</label>
-    <div class="d-flex flex-wrap gap-3 mb-3">
-        {% for img in images %}
-        <div class="position-relative">
-            <img src="/media/{{ img.image }}" alt="" class="rounded border" width="100" height="100">
-            <button type="button" 
-                    class="btn btn-danger btn-sm position-absolute top-0 end-0 delete-image-btn" 
-                    data-id="{{ img.id }}" 
-                    style="border-radius:50%; padding:0 6px; line-height:1;">
-                &times;
-            </button>
-        </div>
-        {% empty %}
-        <p class="text-muted">No images uploaded.</p>
-        {% endfor %}
+  <label class="form-label">Current Images</label>
+  <div class="d-flex flex-wrap gap-3 mb-3" id="imagePreviewContainer">
+    {% for img in images %}
+    <div class="position-relative image-box" data-img-id="{{ img.id }}">
+      <img src="/media/{{ img.image }}" alt="" class="rounded border" width="100" height="100">
+      <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 delete-image-btn"
+        style="border-radius:50%;width:25px;height:25px;padding:0;">
+        <i class="bi bi-trash"></i>
+      </button>
+      <input type="hidden" name="keep_images[]" value="{{ img.id }}">
     </div>
+    {% empty %}
+    <p class="text-muted">No images uploaded.</p>
+    {% endfor %}
+  </div>
 
-    <label class="form-label">Upload New Images</label>
-    <input type="file" name="images" multiple class="form-control">
+  <label class="form-label mt-3">Upload New Images</label>
+  <input type="file" name="images" multiple class="form-control">
 </div>
+
+        
+
 
                 <div class="mb-3 col-lg-12">
                     <h4>Custom Fields</h4>
@@ -143,32 +145,22 @@
             if (e.target.classList.contains("removeField")) e.target.closest("div").remove();
         });
 
-        // Delete image AJAX
-    document.querySelectorAll(".delete-image-btn").forEach(btn => {
-        btn.addEventListener("click", function () {
-            const imageId = this.getAttribute("data-id");
-            if (confirm("Are you sure you want to delete this image?")) {
-                fetch(`/delete-product-image/${imageId}/`, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === "success") {
-                        this.closest(".position-relative").remove();
-                    } else {
-                        alert(data.message);
-                    }
-                })
-                .catch(err => alert("Error deleting image"));
-            }
-        });
-    });
+        
     });
 </script>
 
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".delete-image-btn").forEach(btn => {
+      btn.addEventListener("click", function () {
+        const box = this.closest(".image-box");
+        box.style.display = "none";
+        const hidden = box.querySelector("input[name='keep_images[]']");
+        if (hidden) hidden.remove();
+      });
+    });
+  });
+</script>
 
 
 

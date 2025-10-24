@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Buy Now | Checkout{% endblock %}
+{% block content %}
+
+<main class="py-5 bg-light">
+  <div class="container">
+    <h3 class="fw-bold mb-4 text-center">Checkout</h3>
+
+    <div class="row g-4">
+      <!-- 🛍️ LEFT SIDE — Product Summary -->
+      <div class="col-lg-6 col-md-6">
+       <div class="card shadow-sm border-0">
+  <div class="card-header bg-white border-bottom">
+    <h5 class="fw-bold mb-0">
+      {% if is_cart_checkout %}Your Cart Items{% else %}Product Details{% endif %}
+    </h5>
+  </div>
+  <div class="card-body">
+
+    {% if is_cart_checkout %}
+      {% for item in cart_items %}
+      <div class="d-flex align-items-center border-bottom pb-3 mb-3">
+        <img src="/media/{{ item.main_image }}" class="rounded me-3"
+             style="width:80px;height:80px;object-fit:cover;">
+        <div class="flex-grow-1">
+          <h6 class="fw-semibold mb-1">{{ item.title }}</h6>
+          <p class="text-muted small mb-0">Qty: {{ item.quantity }}</p>
+          <p class="fw-semibold mb-0 text-dark">₹{{ item.total_price }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="d-flex align-items-center mb-3">
+        <img src="/media/{{ product.main_image }}" class="rounded me-3"
+             style="width:110px;height:110px;object-fit:cover;">
+        <div>
+          <h5 class="fw-semibold mb-1">{{ product.title }}</h5>
+          <p class="text-muted small mb-1">
+            Category: {{ product.category_name|default:"N/A" }}
+          </p>
+          <p class="mb-0 text-dark fw-semibold">
+            Price:
+            {% if product.sale_price %}
+              ₹{{ product.sale_price }}
+              <span class="text-decoration-line-through text-muted small">₹{{ product.price }}</span>
+            {% else %}
+              ₹{{ product.price }}
+            {% endif %}
+          </p>
+          <p class="small text-success mb-0 mt-1">In Stock</p>
+        </div>
+      </div>
+      <hr>
+      <p class="fw-semibold mb-1">Description:</p>
+      <p class="text-muted small">
+        {{ product.description|truncatewords:25|default:"No description available." }}
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+      </div>
+
+      <!-- 💳 RIGHT SIDE — Purchase Details -->
+      <div class="col-lg-6 col-md-6">
+        <!-- Address -->
+        <div class="card mb-4 shadow-sm border-0">
+          <div class="card-header bg-primary text-white">
+            <strong>Shipping Address</strong>
+          </div>
+          <div class="card-body">
+            {% if default_address %}
+              <p class="mb-1">{{ default_address.first_name }} {{ default_address.last_name }}</p>
+              <p class="mb-1">{{ default_address.address_line1 }}, {{ default_address.city }}, {{ default_address.state }}</p>
+              <p class="mb-1">{{ default_address.country }} - {{ default_address.zip_code }}</p>
+              <p class="mb-0">📞 {{ default_address.phone }}</p>
+            {% else %}
+              <p class="text-danger mb-0">
+                No address found. <a href="{% url 'address' %}">Add address</a>
+              </p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Payment -->
+        <div class="card mb-4 shadow-sm border-0">
+          <div class="card-header bg-success text-white">
+            <strong>Payment Method</strong>
+          </div>
+          <div class="card-body">
+            <p class="mb-0">💳 Demo Payment (COD / UPI simulated)</p>
+          </div>
+        </div>
+
+       <!-- 🧾 Summary -->
+<div class="card shadow-sm border-0 mb-3">
+  <div class="card-header bg-light">
+    <strong>Order Summary</strong>
+  </div>
+  <div class="card-body">
+    <div class="d-flex justify-content-between mb-2">
+  <span>Subtotal:</span>
+  <span id="subtotalAmount">
+    {% if is_cart_checkout %}
+      ₹{{ subtotal }}
+    {% else %}
+      ₹{{ product.sale_price|default:product.price }}
+    {% endif %}
+  </span>
+</div>
+
+<div class="d-flex justify-content-between mb-2" id="coinDiscountRow" style="display: none;">
+  <span>SuperCoin Discount:</span>
+  <span class="text-danger fw-semibold" id="coinDiscount">-₹0</span>
+</div>
+
+<div class="d-flex justify-content-between mb-2">
+  <span>Shipping:</span>
+  <span>Free</span>
+</div>
+<hr>
+<div class="d-flex justify-content-between">
+  <strong>Total:</strong>
+  <h5 id="finalPrice" class="fw-bold text-success"
+      data-amount="{% if is_cart_checkout %}{{ subtotal }}{% else %}{{ product.sale_price|default:product.price }}{% endif %}">
+    {% if is_cart_checkout %}
+      ₹{{ subtotal }}
+    {% else %}
+      ₹{{ product.sale_price|default:product.price }}
+    {% endif %}
+  </h5>
+</div>
+
+
+    <div class="d-flex justify-content-between mb-2" id="coinDiscountRow" style="display: none;">
+      <span>SuperCoin Discount:</span>
+      <span class="text-danger fw-semibold" id="coinDiscount">-₹0</span>
+    </div>
+
+    <div class="d-flex justify-content-between mb-2">
+      <span>Shipping:</span>
+      <span>Free</span>
+    </div>
+    <hr>
+
+    <div class="d-flex justify-content-between">
+      <strong>Total:</strong>
+      <h5 id="finalPrice"
+          class="fw-bold text-success"
+          data-amount="{{ product.sale_price|default:product.price }}">
+        ₹{{ product.sale_price|default:product.price }}
+      </h5>
+    </div>
+  </div>
+</div>
+
+
+        <!-- 💰 SuperCoin Section -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-warning">
+    <strong>Use SuperCoins</strong>
+  </div>
+  <div class="card-body">
+    {% if user_coins > 0 %}
+      <p>You have <strong>{{ user_coins }}</strong> SuperCoins.</p>
+      <p>Each coin = ₹1 discount.</p>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="useCoins" onchange="toggleCoins()">
+        <label class="form-check-label" for="useCoins">Redeem my SuperCoins</label>
+      </div>
+    {% else %}
+      <p class="text-muted">You have 0 SuperCoins. Earn 1 for every ₹100 spent.</p>
+    {% endif %}
+  </div>
+</div>
+
+        <!-- Pay Button -->
+        <form method="POST" action="{% if is_cart_checkout %}{% url 'cart-demo-payment' %}{% else %}{% url 'demo-payment' product.id %}{% endif %}">
+
+  {% csrf_token %}
+  <input type="hidden" name="use_coins" id="useCoinsInput">
+  <button class="btn btn-success w-100 py-2" onclick="setCoinsBeforeSubmit()">
+    💰 Pay Now (Demo)
+  </button>
+</form>
+      </div>
+    </div>
+  </div>
+</main>
+
+<style>
+  @media (max-width: 768px) {
+    main .card {
+      margin-bottom: 1rem;
+    }
+  }
+</style>
+
+
+<script>
+function toggleCoins() {
+  const checkbox = document.getElementById('useCoins');
+  const priceEl = document.getElementById('finalPrice');
+  const discountRow = document.getElementById('coinDiscountRow');
+  const discountEl = document.getElementById('coinDiscount');
+  const base = parseFloat(priceEl.dataset.amount);
+  const discount = {{ user_coins }};
+
+  if (checkbox.checked) {
+    const newTotal = Math.max(base - discount, 0);
+    priceEl.innerText = "₹" + newTotal.toFixed(2);
+    discountEl.innerText = "-₹" + discount.toFixed(2);
+    discountRow.style.display = "flex"; // Show row
+  } else {
+    // ✅ Reset total and hide discount
+    priceEl.innerText = "₹" + base.toFixed(2);
+    discountEl.innerText = "-₹0";
+    discountRow.style.display = "none";
+  }
+}
+
+function setCoinsBeforeSubmit() {
+  document.getElementById('useCoinsInput').value =
+    document.getElementById('useCoins').checked ? 'on' : 'off';
+}
+</script>
+
+
+{% endblock %}

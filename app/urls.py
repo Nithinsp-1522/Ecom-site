@@ -15,6 +15,8 @@ urlpatterns = [
     path('category/<int:category_id>/', views.category_products, name='category-products'),
     path('category-products/', views.category_products, name='category-products'),
     path('cart/', views.cart, name='cart'),
+    path('cart/checkout/', views.cart_checkout, name='cart-checkout'),
+
     
     # User URLs
     path('profile/', views.profile, name='profile'),  
@@ -30,7 +32,9 @@ urlpatterns = [
     path('search/', views.search_products, name='search'),
     
     # cart URLs
-    path("buy-now/<int:product_id>/", views.buy_now, name="buy-now"),
+    path('buy-now/<int:product_id>/', views.buy_now, name='buy-now'),
+    path('demo-payment/<int:product_id>/', views.demo_payment, name='demo-payment'),
+
 
     # Cart URLs
     path('add-to-cart/<int:product_id>/', views.add_to_cart, name="add-to-cart"),
