@@ -17,11 +17,16 @@ urlpatterns = [
     path('cart/', views.cart, name='cart'),
     path('cart/checkout/', views.cart_checkout, name='cart-checkout'),
     path('cart/demo-payment/', views.cart_demo_payment, name='cart-demo-payment'),
+<<<<<<< HEAD
     path("shop-all/", views.shop_all, name="shop-all"),
 
 
     path("wishlist/", views.wishlist, name="wishlist"),
     path("wishlist-add-to-cart/<int:product_id>/", views.wishlist_add_to_cart, name="wishlist-add-to-cart"),
+=======
+
+    path('wishlist/', views.wishlist, name='wishlist'),
+>>>>>>> origin/main
     path("add-to-wishlist/<int:product_id>/", views.add_to_wishlist, name="add-to-wishlist"),
     path("remove-from-wishlist/<int:product_id>/", views.remove_from_wishlist, name="remove-from-wishlist"),
     

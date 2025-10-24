@@ -47,6 +47,7 @@ def admin_context(request):
     return context
 
 
+<<<<<<< HEAD
 from . import db
 
 def global_counts(request):
@@ -64,6 +65,8 @@ def global_counts(request):
         "cart_count": cart_result["count"] if cart_result else 0,
         "wishlist_count": wishlist_result["count"] if wishlist_result else 0,
     }
+=======
+>>>>>>> origin/main
 
 
 

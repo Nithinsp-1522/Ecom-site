@@ -30,6 +30,11 @@
       overflow-x: hidden;
    }
 
+.badge {
+  font-size: 0.75rem;
+  border-radius: 6px;
+  padding: 0.4em 0.6em;
+}
 
    /* --- HERO SLIDER RESPONSIVE DESIGN --- */
 
@@ -303,14 +308,37 @@
                                  <path d="M16 10a4 4 0 0 1-8 0"></path>
                               </svg>
                               <span id="cartCountBadge"
+<<<<<<< HEAD
                                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark shadow-sm"
                                  style="font-size: 0.7rem; min-width: 1.3rem;">
                                  {{ cart_count|default:0 }}
                                  <span class="visually-hidden">cart items</span>
                               </span>
+=======
+      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+   {{ cart_count|default:0 }}
+   <span class="visually-hidden">cart items</span>
+</span>
+>>>>>>> origin/main
                            </a>
                         </div>
                      </div>
+
+                     <div class="list-inline-item me-5">
+                     <a href="{% url 'wishlist' %}" class="text-reset position-relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                           class="feather feather-heart">
+                           <path
+                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                           </path>
+                        </svg>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+                           0
+                           <span class="visually-hidden">unread messages</span>
+                        </span>
+                     </a>
+                  </div>
                      <!-- Button -->
                      <button class="navbar-toggler collapsed" type="button" data-bs-toggle="offcanvas"
                         data-bs-target="#navbar-default" aria-controls="navbar-default" aria-label="Toggle navigation">
@@ -349,9 +377,14 @@
                      <!-- login end -->
                   </div>
 
+<<<<<<< HEAD
                   <!-- ❤️ Wishlist -->
                   <div class="list-inline-item me-4">
                      <a href="{% url 'wishlist' %}" class="text-reset position-relative" title="My Wishlist">
+=======
+                  <div class="list-inline-item me-5">
+                     <a href="{% url 'wishlist' %}" class="text-reset position-relative">
+>>>>>>> origin/main
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                            class="feather feather-heart">
@@ -380,11 +413,18 @@
                            <path d="M16 10a4 4 0 0 1-8 0"></path>
                         </svg>
                         <span id="cartCountBadge"
+<<<<<<< HEAD
                            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark shadow-sm"
                            style="font-size: 0.7rem; min-width: 1.3rem;">
                            {{ cart_count|default:0 }}
                            <span class="visually-hidden">cart items</span>
                         </span>
+=======
+      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+   {{ cart_count|default:0 }}
+   <span class="visually-hidden">cart items</span>
+</span>
+>>>>>>> origin/main
                      </a>
                   </div>
 

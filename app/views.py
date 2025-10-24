@@ -39,6 +39,7 @@ def get_cart_count(user_id):
     )
     return result["count"] if result else 0
 
+<<<<<<< HEAD
 def get_wishlist_count(user_id):
     result = db.selectone(
         "SELECT COUNT(*) AS count FROM wishlist WHERE user_id=%s", (user_id,)
@@ -46,6 +47,8 @@ def get_wishlist_count(user_id):
     return result["count"] if result else 0
 
 
+=======
+>>>>>>> origin/main
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def index(request):
@@ -65,6 +68,7 @@ def index(request):
     return render(request, "index.html", {"carousels": carousels,"categories": categories,
         "category_groups": category_groups,
         "first_10_categories": first_10_categories,
+<<<<<<< HEAD
         "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
         "wishlist_count": get_wishlist_count(request.session["user_id"]) if "user_id" in request.session else 0}
 )
@@ -126,6 +130,19 @@ def shop_all(request):
         "wishlist_count": get_wishlist_count(user_id) if user_id else 0,
     })
 
+=======
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
+
+def about(request):
+    return render(request, 'about.html',{"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
+
+def contact(request):
+    return render(request, 'contact.html',{"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
+
+def user_categories(request):
+    categories = db.selectall("SELECT * FROM categories ORDER BY id DESC")
+    return render(request, 'usercategories.html', {"categories": categories, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
+>>>>>>> origin/main
 
 def category_products(request, category_id):
     # ✅ Get category
@@ -198,6 +215,7 @@ def category_products(request, category_id):
         "sort": sort,
         "limit": limit,
     }
+<<<<<<< HEAD
     user_id = request.session.get("user_id")
 
     return render(request, "shop-grid.html", {
@@ -206,6 +224,9 @@ def category_products(request, category_id):
         **context
     })
 
+=======
+    return render(request, "shop-grid.html", {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0, **context})
+>>>>>>> origin/main
 
 
 from django.http import JsonResponse
@@ -349,7 +370,10 @@ def cart(request):
         "subtotal": subtotal,
         "total": total,
         "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
+<<<<<<< HEAD
         "wishlist_count": get_wishlist_count(user_id) if user_id else 0,
+=======
+>>>>>>> origin/main
     })
 
 @csrf_exempt
@@ -456,6 +480,7 @@ def cart_demo_payment(request):
         request,
         f"✅ Order placed for all cart items! You used {discount} coins and earned {earned} new SuperCoins."
     )
+<<<<<<< HEAD
     return redirect("order-details", {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
                     "wishlist_count": get_wishlist_count(user_id) if user_id else 0,})
 
@@ -539,6 +564,39 @@ def add_to_wishlist(request, product_id):
 
 
 @csrf_exempt
+=======
+    return redirect("order-details", {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
+
+def wishlist(request):
+    return render(request, "shop-wishlist.html", {
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
+    })
+
+@csrf_exempt
+def add_to_wishlist(request, product_id):
+    """Add product to wishlist (login required)"""
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+
+    user_id = request.session["user_id"]
+
+    # ✅ Check if product exists
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
+    if not product:
+        return JsonResponse({"status": "error", "message": "Product not found."})
+
+    # ✅ Check if already in wishlist
+    existing = db.selectone("SELECT * FROM wishlist WHERE user_id=%s AND product_id=%s", (user_id, product_id))
+    if existing:
+        return JsonResponse({"status": "exists", "message": "Product already in your wishlist."})
+
+    # ✅ Add to wishlist
+    db.insert("INSERT INTO wishlist (user_id, product_id) VALUES (%s,%s)", (user_id, product_id))
+    return JsonResponse({"status": "added", "message": "Added to your wishlist!"})
+
+
+@csrf_exempt
+>>>>>>> origin/main
 def remove_from_wishlist(request, product_id):
     """Remove item from wishlist"""
     if "user_id" not in request.session:
@@ -561,8 +619,12 @@ def profile(request):
         request.session.flush()
         return redirect("userlogin")
 
+<<<<<<< HEAD
     return render(request, 'user/account-settings.html', {"user": user, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
                                                           "wishlist_count": get_wishlist_count(request.session["user_id"]) if "user_id" in request.session else 0})
+=======
+    return render(request, 'user/account-settings.html', {"user": user, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
+>>>>>>> origin/main
 
 
 @require_POST
@@ -758,8 +820,12 @@ def address(request):
     return render(request, "user/account-address.html", {
         "addresses": addresses,
         "edit_address": edit_address,
+<<<<<<< HEAD
         "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
         "wishlist_count": get_wishlist_count(user_id) if user_id else 0,
+=======
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0
+>>>>>>> origin/main
     })
 
 
@@ -786,6 +852,7 @@ def order_details(request):
         ORDER BY o.id DESC
     """, (user_id,))
 
+<<<<<<< HEAD
     return render(request, "user/account-orders.html", {"orders": orders, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
                                                         "wishlist_count": get_wishlist_count(user_id) if user_id else 0,})
 
@@ -797,6 +864,16 @@ def payment_method(request):
 def rewards(request):
     return render(request, 'user/account-Rewards.html', {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
                                                           "wishlist_count": get_wishlist_count(request.session["user_id"]) if "user_id" in request.session else 0,})
+=======
+    return render(request, "user/account-orders.html", {"orders": orders, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
+
+
+def payment_method(request):
+    return render(request, 'user/account-payment-method.html', {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
+
+def rewards(request):
+    return render(request, 'user/account-Rewards.html', {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
+>>>>>>> origin/main
 
 
 def search_products(request):
@@ -852,7 +929,10 @@ def search_products(request):
         'total': total,
         'page_numbers': page_numbers,
         "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
+<<<<<<< HEAD
         "wishlist_count": get_wishlist_count(request.session["user_id"]) if "user_id" in request.session else 0,
+=======
+>>>>>>> origin/main
     })
 
     
@@ -902,7 +982,10 @@ def buy_now(request, product_id):
         "default_address": selected_address,
         "user_coins": coins["total"],
         "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
+<<<<<<< HEAD
         "wishlist_count": get_wishlist_count(user_id) if user_id else 0,
+=======
+>>>>>>> origin/main
     })
 
 
@@ -963,7 +1046,10 @@ def cart_checkout(request):
         "user_coins": coins["total"],
         "is_cart_checkout": True,      # mark it as cart checkout
         "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
+<<<<<<< HEAD
         "wishlist_count": get_wishlist_count(user_id) if user_id else 0,
+=======
+>>>>>>> origin/main
     })
 
 
@@ -1044,7 +1130,10 @@ def rewards(request):
         "rewards": rewards,
         "total_coins": total["total_coins"],
         "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
+<<<<<<< HEAD
         "wishlist_count": get_wishlist_count(user_id) if user_id else 0,
+=======
+>>>>>>> origin/main
     })
 
 

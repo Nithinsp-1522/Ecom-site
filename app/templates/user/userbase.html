@@ -24,6 +24,7 @@
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-M8S4MT3EYG"></script>
 
 <style>
+<<<<<<< HEAD
    /* ===================================================
    📱 RESPONSIVE HEADER WITH USERNAME + DROPDOWN
    =================================================== */
@@ -133,6 +134,89 @@
          overflow-x: hidden !important;
       }
    }
+=======
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* --- HERO SLIDER RESPONSIVE DESIGN --- */
+
+/* General hero style */
+.hero-slider [style*="background"] {
+  background-size: cover !important;
+  background-position: center !important;
+  border-radius: 0.5rem;
+  height: 320px;               /* desktop height */
+  display: flex;
+  align-items: center;
+  color: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Inner text wrapper */
+.hero-slider .hero-content {
+  max-width: 600px;
+  padding: 2rem 3rem;
+}
+
+/* Text styles */
+.hero-slider h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.hero-slider p {
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+/* ✅ Desktop: Left aligned text */
+@media (min-width: 992px) {
+  .hero-slider {
+    text-align: left;
+    justify-content: flex-start;
+    padding-left: 5%;
+  }
+}
+
+/* ✅ Tablet: Centered text */
+@media (max-width: 991px) and (min-width: 577px) {
+  .hero-slider {
+    justify-content: center;
+    text-align: center;
+  }
+  .hero-slider [style*="background"] {
+    height: 260px;
+  }
+  .hero-slider h2 {
+    font-size: 1.6rem;
+  }
+}
+
+/* ✅ Mobile: Smaller centered layout */
+@media (max-width: 576px) {
+  .hero-slider {
+    justify-content: center;
+    text-align: center;
+  }
+  .hero-slider [style*="background"] {
+    height: 200px;
+    padding: 1rem;
+  }
+  .hero-slider h2 {
+    font-size: 1.2rem;
+  }
+  .hero-slider p {
+    font-size: 0.9rem;
+  }
+}
+
+
+>>>>>>> origin/main
 </style>
 
 <script>
@@ -222,6 +306,7 @@
 
                         </div>
                         <div class="list-inline-item">
+<<<<<<< HEAD
   <a href="{% url 'cart' %}" class="text-reset position-relative" title="My Cart" role="button"
      aria-controls="offcanvasRight">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
@@ -239,7 +324,41 @@
     </span>
   </a>
 </div>
+=======
+                           <a class="text-muted position-relative"  href="{% url 'cart' %}" role="button"
+                              aria-controls="offcanvasRight">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                 stroke-linejoin="round" class="feather feather-shopping-bag">
+                                 <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                 <line x1="3" y1="6" x2="21" y2="6"></line>
+                                 <path d="M16 10a4 4 0 0 1-8 0"></path>
+                              </svg>
+                              <span id="cartCountBadge"
+      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+   {{ cart_count|default:0 }}
+   <span class="visually-hidden">cart items</span>
+</span>
+                           </a>
+                        </div>
+>>>>>>> origin/main
                      </div>
+<div class="list-inline-item me-5">
+                     <a href="{% url 'wishlist' %}" class="text-reset position-relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                           class="feather feather-heart">
+                           <path
+                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                           </path>
+                        </svg>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+                           0
+                           <span class="visually-hidden">unread messages</span>
+                        </span>
+                     </a>
+                  </div>
+
                      <!-- Button -->
                      <button class="navbar-toggler collapsed" type="button" data-bs-toggle="offcanvas"
                         data-bs-target="#navbar-default" aria-controls="navbar-default" aria-label="Toggle navigation">
@@ -278,6 +397,7 @@
                      <!-- login end -->
                   </div>
 
+<<<<<<< HEAD
                   <!-- ❤️ Wishlist -->
 <div class="list-inline-item me-4">
   <a href="{% url 'wishlist' %}" class="text-reset position-relative" title="My Wishlist">
@@ -317,6 +437,41 @@
   </a>
 </div>
 
+=======
+                  <div class="list-inline-item me-5">
+                     <a href="{% url 'wishlist' %}" class="text-reset position-relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                           class="feather feather-heart">
+                           <path
+                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                           </path>
+                        </svg>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+                           0
+                           <span class="visually-hidden">unread messages</span>
+                        </span>
+                     </a>
+                  </div>
+
+                  <div class="list-inline-item">
+                     <a class="text-reset position-relative"
+                        href="{% url 'cart' %}" role="button" aria-controls="offcanvasRight">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                           class="feather feather-shopping-bag">
+                           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                           <line x1="3" y1="6" x2="21" y2="6"></line>
+                           <path d="M16 10a4 4 0 0 1-8 0"></path>
+                        </svg>
+                        <span id="cartCountBadge"
+      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+   {{ cart_count|default:0 }}
+   <span class="visually-hidden">cart items</span>
+</span>
+                     </a>
+                  </div>
+>>>>>>> origin/main
                </div>
             </div>
          </div>
@@ -577,7 +732,11 @@
          </div>
       </div>
    </div>
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> origin/main
 
    <main>
       <!-- section -->
