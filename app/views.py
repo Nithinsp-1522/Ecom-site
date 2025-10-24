@@ -31,6 +31,15 @@ def normalize_phone(raw):
     """Keep only digits (works for +91, spaces, etc.)"""
     return re.sub(r"\D", "", raw or "")
 
+def get_cart_count(user_id):
+    """Return total number of items in user's cart"""
+    result = db.selectone(
+        "SELECT COALESCE(SUM(quantity), 0) AS count FROM cart WHERE user_id=%s",
+        (user_id,)
+    )
+    return result["count"] if result else 0
+
+
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def index(request):
     carousels = db.selectall("SELECT * FROM carousel_images ORDER BY id DESC")
@@ -45,20 +54,21 @@ def index(request):
 
     # ✅ Only first 10 categories shown on home
     first_10_categories = categories[:10]
-    
+
     return render(request, "index.html", {"carousels": carousels,"categories": categories,
         "category_groups": category_groups,
-        "first_10_categories": first_10_categories})
+        "first_10_categories": first_10_categories,
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
 
 def about(request):
-    return render(request, 'about.html')
+    return render(request, 'about.html',{"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
 
 def contact(request):
-    return render(request, 'contact.html')
+    return render(request, 'contact.html',{"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
 
 def user_categories(request):
     categories = db.selectall("SELECT * FROM categories ORDER BY id DESC")
-    return render(request, 'usercategories.html', {"categories": categories})
+    return render(request, 'usercategories.html', {"categories": categories, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,})
 
 def category_products(request, category_id):
     # ✅ Get category
@@ -78,17 +88,26 @@ def category_products(request, category_id):
     elif sort == "price_high":
         order_by = "p.price DESC"
 
+    # ✅ Filter by selected subcategory
+    sub_id = request.GET.get("sub")
+    subcategory_filter = ""
+    params = [category_id]
+    if sub_id:
+        subcategory_filter = "AND p.subcategory_id=%s"
+        params.append(sub_id)
+
     # ✅ Pagination setup
     page = int(request.GET.get("page", 1))
     limit = int(request.GET.get("limit", 12))
     offset = (page - 1) * limit
 
-    # ✅ Count total
-    count_row = db.selectone("""
+    # ✅ Count total products
+    count_row = db.selectone(f"""
         SELECT COUNT(*) AS count 
         FROM products p 
-        WHERE p.category_id=%s AND p.approved=1 AND p.pending_approval=0 AND p.disapproved=0
-    """, (category_id,))
+        WHERE p.category_id=%s AND p.approved=1 
+              AND p.pending_approval=0 AND p.disapproved=0 {subcategory_filter}
+    """, params)
     total = count_row["count"] if count_row else 0
 
     # ✅ Fetch paginated products
@@ -100,10 +119,11 @@ def category_products(request, category_id):
         FROM products p
         LEFT JOIN categories c ON p.category_id=c.id
         LEFT JOIN subcategories s ON p.subcategory_id=s.id
-        WHERE p.category_id=%s AND p.approved=1 AND p.pending_approval=0 AND p.disapproved=0
+        WHERE p.category_id=%s AND p.approved=1 
+              AND p.pending_approval=0 AND p.disapproved=0 {subcategory_filter}
         ORDER BY {order_by}
         LIMIT %s OFFSET %s
-    """, (category_id, limit, offset))
+    """, params + [limit, offset])
 
     total_pages = (total + limit - 1) // limit
 
@@ -121,7 +141,8 @@ def category_products(request, category_id):
         "sort": sort,
         "limit": limit,
     }
-    return render(request, "shop-grid.html", context)
+    return render(request, "shop-grid.html", {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0, **context})
+
 
 from django.http import JsonResponse
 
@@ -213,12 +234,12 @@ def add_to_cart(request, product_id):
     user_id = request.session["user_id"]
     qty = int(request.POST.get("quantity", 1))
 
-    # Check if product exists
+    # ✅ Check if product exists
     product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
     if not product:
         return JsonResponse({"status": "error", "message": "Product not found."})
 
-    # Check if already in cart → update qty
+    # ✅ Check if already in cart → update qty
     existing = db.selectone(
         "SELECT * FROM cart WHERE user_id=%s AND product_id=%s",
         (user_id, product_id)
@@ -226,11 +247,12 @@ def add_to_cart(request, product_id):
 
     if existing:
         db.update("UPDATE cart SET quantity = quantity + %s WHERE id=%s", (qty, existing["id"]))
+        return JsonResponse({"status": "updated", "message": "Quantity updated in your cart."})
     else:
         db.insert("INSERT INTO cart (user_id, product_id, quantity) VALUES (%s,%s,%s)",
                   (user_id, product_id, qty))
+        return JsonResponse({"status": "added", "message": "Product added to your cart."})
 
-    return JsonResponse({"status": "success"})
 
 
 def cart(request):
@@ -256,14 +278,13 @@ def cart(request):
         item["total_price"] = price * item["quantity"]
 
     subtotal = sum(item["total_price"] for item in items)
-    service_fee = 3 if items else 0
-    total = subtotal + service_fee
+    total = subtotal
 
     return render(request, "shop-cart.html", {
         "items": items,
         "subtotal": subtotal,
-        "service_fee": service_fee,
-        "total": total
+        "total": total,
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
     })
 
 @csrf_exempt
@@ -302,8 +323,113 @@ def apply_promo(request):
         "total": total
     })
 
+@require_POST
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def cart_demo_payment(request):
+    """Simulate payment for all cart items + SuperCoin logic"""
+    if "user_id" not in request.session:
+        return redirect("userlogin")
+
+    user_id = request.session["user_id"]
+
+    # 🛒 Get all cart items
+    items = db.selectall("""
+        SELECT c.id AS cart_id, p.id AS product_id, p.price, p.sale_price, c.quantity
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.user_id=%s
+    """, (user_id,))
+
+    if not items:
+        messages.warning(request, "Your cart is empty.")
+        return redirect("cart")
+
+    # 🧾 Calculate total
+    total_amount = 0
+    for item in items:
+        price = item["sale_price"] or item["price"]
+        total_amount += price * item["quantity"]
+
+    # 🪙 Fetch user’s available coins
+    total_coins = db.selectone("""
+        SELECT COALESCE(SUM(coins_earned), 0) AS total FROM rewards WHERE user_id=%s
+    """, (user_id,))
+    available = total_coins["total"]
+
+    # 🪙 Handle coin usage
+    use_coins = request.POST.get("use_coins", "off") == "on"
+    discount = 0
+    if use_coins and available > 0:
+        discount = min(int(total_amount), available)
+        total_amount -= discount
+        db.insert("""
+            INSERT INTO rewards (user_id, coins_earned, source)
+            VALUES (%s, %s, %s)
+        """, (user_id, -discount, f"Used {discount} coins for cart discount"))
+
+    # ✅ Create orders for each product in the cart
+    for item in items:
+        item_price = item["sale_price"] or item["price"]
+        total_item_price = item_price * item["quantity"]
+        db.insert("""
+            INSERT INTO orders (user_id, product_id, total_amount, payment_status, created_at)
+            VALUES (%s, %s, %s, %s, NOW())
+        """, (user_id, item["product_id"], total_item_price, "success"))
+
+    # 🎁 Reward new coins (1 coin per ₹100 spent)
+    earned = int(total_amount // 100)
+    if earned > 0:
+        db.insert("""
+            INSERT INTO rewards (user_id, coins_earned, source)
+            VALUES (%s, %s, %s)
+        """, (user_id, earned, f"Earned from cart purchase ₹{total_amount}"))
+
+    # 🧹 Clear cart after successful order
+    db.delete("DELETE FROM cart WHERE user_id=%s", (user_id,))
+
+    messages.success(
+        request,
+        f"✅ Order placed for all cart items! You used {discount} coins and earned {earned} new SuperCoins."
+    )
+    return redirect("order-details", {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
+
+def wishlist(request):
+    return render(request, "shop-wishlist.html", {
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
+    })
+
+@csrf_exempt
+def add_to_wishlist(request, product_id):
+    """Add product to wishlist (login required)"""
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+
+    user_id = request.session["user_id"]
+
+    # ✅ Check if product exists
+    product = db.selectone("SELECT * FROM products WHERE id=%s", (product_id,))
+    if not product:
+        return JsonResponse({"status": "error", "message": "Product not found."})
+
+    # ✅ Check if already in wishlist
+    existing = db.selectone("SELECT * FROM wishlist WHERE user_id=%s AND product_id=%s", (user_id, product_id))
+    if existing:
+        return JsonResponse({"status": "exists", "message": "Product already in your wishlist."})
+
+    # ✅ Add to wishlist
+    db.insert("INSERT INTO wishlist (user_id, product_id) VALUES (%s,%s)", (user_id, product_id))
+    return JsonResponse({"status": "added", "message": "Added to your wishlist!"})
 
 
+@csrf_exempt
+def remove_from_wishlist(request, product_id):
+    """Remove item from wishlist"""
+    if "user_id" not in request.session:
+        return JsonResponse({"status": "login_required"})
+
+    user_id = request.session["user_id"]
+    db.delete("DELETE FROM wishlist WHERE user_id=%s AND product_id=%s", (user_id, product_id))
+    return JsonResponse({"status": "removed", "message": "Removed from your wishlist."})
 
 # user views
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -318,7 +444,7 @@ def profile(request):
         request.session.flush()
         return redirect("userlogin")
 
-    return render(request, 'user/account-settings.html', {"user": user})
+    return render(request, 'user/account-settings.html', {"user": user, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
 
 
 @require_POST
@@ -513,7 +639,8 @@ def address(request):
 
     return render(request, "user/account-address.html", {
         "addresses": addresses,
-        "edit_address": edit_address
+        "edit_address": edit_address,
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0
     })
 
 
@@ -540,14 +667,14 @@ def order_details(request):
         ORDER BY o.id DESC
     """, (user_id,))
 
-    return render(request, "user/account-orders.html", {"orders": orders})
+    return render(request, "user/account-orders.html", {"orders": orders, "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
 
 
 def payment_method(request):
-    return render(request, 'user/account-payment-method.html')
+    return render(request, 'user/account-payment-method.html', {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
 
 def rewards(request):
-    return render(request, 'user/account-Rewards.html')
+    return render(request, 'user/account-Rewards.html', {"cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0})
 
 
 def search_products(request):
@@ -581,6 +708,7 @@ def search_products(request):
                 p.title AS name, 
                 p.price, 
                 p.sale_price,
+                p.stock,
                 (SELECT image FROM product_images WHERE product_id = p.id LIMIT 1) AS image
             FROM products p
             WHERE p.title LIKE %s 
@@ -601,13 +729,14 @@ def search_products(request):
         'total_pages': total_pages,
         'total': total,
         'page_numbers': page_numbers,
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
     })
 
     
     
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def buy_now(request, product_id):
-    """Buy Now checkout page"""
+    """Buy Now checkout page with selectable addresses"""
     if "user_id" not in request.session:
         return redirect("userlogin")
 
@@ -621,9 +750,23 @@ def buy_now(request, product_id):
         messages.error(request, "Product not found.")
         return redirect("index")
 
-    default_address = db.selectone(
-        "SELECT * FROM addresses WHERE user_id=%s AND is_default=1 LIMIT 1", (user_id,)
+    # ✅ Fetch all user addresses
+    addresses = db.selectall(
+        "SELECT * FROM addresses WHERE user_id=%s ORDER BY is_default DESC, id DESC",
+        (user_id,)
     )
+
+    # ✅ Determine selected address
+    selected_id = request.GET.get("address_id")
+    if selected_id:
+        selected_address = db.selectone(
+            "SELECT * FROM addresses WHERE id=%s AND user_id=%s",
+            (selected_id, user_id)
+        )
+    else:
+        selected_address = db.selectone(
+            "SELECT * FROM addresses WHERE user_id=%s AND is_default=1 LIMIT 1", (user_id,)
+        )
 
     # 🪙 Fetch user’s total SuperCoins
     coins = db.selectone("""
@@ -632,9 +775,12 @@ def buy_now(request, product_id):
 
     return render(request, "purchase.html", {
         "product": product,
-        "default_address": default_address,
+        "addresses": addresses,
+        "default_address": selected_address,
         "user_coins": coins["total"],
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
     })
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def cart_checkout(request):
@@ -665,10 +811,21 @@ def cart_checkout(request):
         item["total_price"] = price * item["quantity"]
         subtotal += item["total_price"]
 
-    # 🏠 Default address
-    default_address = db.selectone(
-        "SELECT * FROM addresses WHERE user_id=%s AND is_default=1 LIMIT 1", (user_id,)
+        # ✅ Fetch all addresses for selection
+    addresses = db.selectall(
+        "SELECT * FROM addresses WHERE user_id=%s ORDER BY is_default DESC, id DESC",
+        (user_id,)
     )
+    selected_id = request.GET.get("address_id")
+    if selected_id:
+        default_address = db.selectone(
+            "SELECT * FROM addresses WHERE id=%s AND user_id=%s", (selected_id, user_id)
+        )
+    else:
+        default_address = db.selectone(
+            "SELECT * FROM addresses WHERE user_id=%s AND is_default=1 LIMIT 1", (user_id,)
+        )
+
 
     # 🪙 Fetch SuperCoins
     coins = db.selectone("""
@@ -681,6 +838,7 @@ def cart_checkout(request):
         "default_address": default_address,
         "user_coins": coins["total"],
         "is_cart_checkout": True,      # mark it as cart checkout
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
     })
 
 
@@ -760,6 +918,7 @@ def rewards(request):
     return render(request, "user/account-Rewards.html", {
         "rewards": rewards,
         "total_coins": total["total_coins"],
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
     })
 
 
@@ -2288,6 +2447,7 @@ def view_product(request, id):
         "attributes": attributes,
         "grouped_attrs": grouped_attrs,
         "related_products": related_products,
+        "cart_count": get_cart_count(request.session["user_id"]) if "user_id" in request.session else 0,
     })
 
 def order_list(request):

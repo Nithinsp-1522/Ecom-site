@@ -1,230 +1,401 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Buy Now | Checkout{% endblock %}
+{% block title %}Checkout | Buy Now{% endblock %}
 {% block content %}
 
-<main class="py-5 bg-light">
+<main class="bg-light py-5">
   <div class="container">
-    <h3 class="fw-bold mb-4 text-center">Checkout</h3>
+    <!-- 🧭 Checkout Progress -->
+    <div class="checkout-steps mb-5 text-center">
+      <ul class="list-inline d-inline-flex justify-content-center mb-0">
+        <li class="list-inline-item mx-3 step active">Cart</li>
+        <li class="list-inline-item mx-3 step active">Address</li>
+        <li class="list-inline-item mx-3 step active">Payment</li>
+        <li class="list-inline-item mx-3 step">Confirm</li>
+      </ul>
+    </div>
 
-    <div class="row g-4">
-      <!-- 🛍️ LEFT SIDE — Product Summary -->
-      <div class="col-lg-6 col-md-6">
-       <div class="card shadow-sm border-0">
-  <div class="card-header bg-white border-bottom">
-    <h5 class="fw-bold mb-0">
-      {% if is_cart_checkout %}Your Cart Items{% else %}Product Details{% endif %}
-    </h5>
-  </div>
-  <div class="card-body">
+    <!-- ✅ FIXED ROW ALIGNMENT -->
+    <div class="row g-4 align-items-start">
+      <!-- LEFT SIDE -->
+      <div class="col-lg-7">
+        <!-- Product Summary -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+          <div class="card-body p-4">
+            <h5 class="fw-bold mb-4 border-bottom pb-2">
+              {% if is_cart_checkout %} <i class="bi bi-bag-check"></i> Your Cart Items{% else %}<i class="bi bi-cart-check"></i> Product Details{% endif %}
+            </h5>
 
-    {% if is_cart_checkout %}
-      {% for item in cart_items %}
-      <div class="d-flex align-items-center border-bottom pb-3 mb-3">
-        <img src="/media/{{ item.main_image }}" class="rounded me-3"
-             style="width:80px;height:80px;object-fit:cover;">
-        <div class="flex-grow-1">
-          <h6 class="fw-semibold mb-1">{{ item.title }}</h6>
-          <p class="text-muted small mb-0">Qty: {{ item.quantity }}</p>
-          <p class="fw-semibold mb-0 text-dark">₹{{ item.total_price }}</p>
-        </div>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="d-flex align-items-center mb-3">
-        <img src="/media/{{ product.main_image }}" class="rounded me-3"
-             style="width:110px;height:110px;object-fit:cover;">
-        <div>
-          <h5 class="fw-semibold mb-1">{{ product.title }}</h5>
-          <p class="text-muted small mb-1">
-            Category: {{ product.category_name|default:"N/A" }}
-          </p>
-          <p class="mb-0 text-dark fw-semibold">
-            Price:
-            {% if product.sale_price %}
-              ₹{{ product.sale_price }}
-              <span class="text-decoration-line-through text-muted small">₹{{ product.price }}</span>
+            {% if is_cart_checkout %}
+            {% for item in cart_items %}
+            <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+              <img src="/media/{{ item.main_image }}" class="rounded-3 me-3 border"
+                style="width:90px;height:90px;object-fit:cover;">
+              <div class="flex-grow-1">
+                <h6 class="fw-semibold mb-1">{{ item.title }}</h6>
+                <p class="small text-muted mb-1">Qty: {{ item.quantity }}</p>
+                <p class="fw-semibold text-dark mb-0">₹{{ item.total_price }}</p>
+              </div>
+            </div>
+            {% endfor %}
             {% else %}
-              ₹{{ product.price }}
-            {% endif %}
-          </p>
-          <p class="small text-success mb-0 mt-1">In Stock</p>
-        </div>
-      </div>
-      <hr>
-      <p class="fw-semibold mb-1">Description:</p>
-      <p class="text-muted small">
-        {{ product.description|truncatewords:25|default:"No description available." }}
-      </p>
-    {% endif %}
-  </div>
-</div>
-
-      </div>
-
-      <!-- 💳 RIGHT SIDE — Purchase Details -->
-      <div class="col-lg-6 col-md-6">
-        <!-- Address -->
-        <div class="card mb-4 shadow-sm border-0">
-          <div class="card-header bg-primary text-white">
-            <strong>Shipping Address</strong>
-          </div>
-          <div class="card-body">
-            {% if default_address %}
-              <p class="mb-1">{{ default_address.first_name }} {{ default_address.last_name }}</p>
-              <p class="mb-1">{{ default_address.address_line1 }}, {{ default_address.city }}, {{ default_address.state }}</p>
-              <p class="mb-1">{{ default_address.country }} - {{ default_address.zip_code }}</p>
-              <p class="mb-0">📞 {{ default_address.phone }}</p>
-            {% else %}
-              <p class="text-danger mb-0">
-                No address found. <a href="{% url 'address' %}">Add address</a>
-              </p>
+            <div class="d-flex align-items-center mb-3">
+              <img src="/media/{{ product.main_image }}" class="rounded-3 border me-3"
+                style="width:110px;height:110px;object-fit:cover;">
+              <div>
+                <h5 class="fw-semibold mb-1">{{ product.title }}</h5>
+                <p class="text-muted small mb-1">
+                  Category: {{ product.category_name|default:"N/A" }}
+                </p>
+                <p class="mb-0 fw-semibold text-dark">
+                  {% if product.sale_price %}
+                  ₹{{ product.sale_price }}
+                  <span class="text-decoration-line-through text-muted small">₹{{ product.price }}</span>
+                  {% else %}
+                  ₹{{ product.price }}
+                  {% endif %}
+                </p>
+                <p class="small text-success mt-1 mb-0">In Stock</p>
+              </div>
+            </div>
+            <p class="fw-semibold mt-3 mb-1">Description</p>
+            <p class="text-muted small mb-0">
+              {{ product.description|truncatewords:25|default:"No description available." }}
+            </p>
             {% endif %}
           </div>
         </div>
 
-        <!-- Payment -->
-        <div class="card mb-4 shadow-sm border-0">
-          <div class="card-header bg-success text-white">
-            <strong>Payment Method</strong>
-          </div>
-          <div class="card-body">
-            <p class="mb-0">💳 Demo Payment (COD / UPI simulated)</p>
+        <!-- Shipping Address -->
+        <div class="card border-0 shadow-sm mb-4 rounded-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">
+              <i class="bi bi-geo-alt-fill"></i> Select Shipping Address
+            </h6>
+
+            {% if addresses %}
+            <form method="get" action="">
+              <div class="list-group">
+                {% for addr in addresses %}
+                <label
+                  class="list-group-item d-flex align-items-start {% if addr.id == default_address.id %}border-primary shadow-sm{% endif %}">
+                  <input class="form-check-input me-3 mt-1" type="radio" name="address_id" value="{{ addr.id }}"
+                    {% if addr.id == default_address.id %}checked{% endif %} onchange="this.form.submit()">
+                  <div>
+                    <h6 class="fw-semibold mb-1">{{ addr.first_name }} {{ addr.last_name }}</h6>
+                    <p class="mb-1 small text-muted">
+                      {{ addr.address_line1 }}, {{ addr.city }}, {{ addr.state }}
+                    </p>
+                    <p class="mb-1 small text-muted">
+                      {{ addr.country }} - {{ addr.zip_code }}
+                    </p>
+                    <p class="mb-0 small text-muted">📞 {{ addr.phone }}</p>
+                    {% if addr.is_default %}
+                    <span class="badge bg-primary-subtle text-primary mt-2">Default</span>
+                    {% endif %}
+                  </div>
+                </label>
+                {% endfor %}
+              </div>
+            </form>
+            {% else %}
+            <p class="text-danger mb-0">No addresses found.
+              <a href="{% url 'address' %}" class="fw-semibold text-decoration-none">Add Address</a>
+            </p>
+            {% endif %}
           </div>
         </div>
 
-       <!-- 🧾 Summary -->
-<div class="card shadow-sm border-0 mb-3">
-  <div class="card-header bg-light">
-    <strong>Order Summary</strong>
-  </div>
-  <div class="card-body">
-    <div class="d-flex justify-content-between mb-2">
-  <span>Subtotal:</span>
-  <span id="subtotalAmount">
-    {% if is_cart_checkout %}
-      ₹{{ subtotal }}
-    {% else %}
-      ₹{{ product.sale_price|default:product.price }}
-    {% endif %}
-  </span>
-</div>
+        <!-- 💳 Payment Methods -->
+        <div class="card border-0 shadow-sm mb-4 rounded-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">
+              <i class="bi bi-wallet2"></i> Select Payment Method
+            </h6>
 
-<div class="d-flex justify-content-between mb-2" id="coinDiscountRow" style="display: none;">
-  <span>SuperCoin Discount:</span>
-  <span class="text-danger fw-semibold" id="coinDiscount">-₹0</span>
-</div>
+            <form id="paymentMethodForm">
+              <!-- COD -->
+              <label class="payment-option border rounded-3 p-3 mb-3 d-flex align-items-center"
+                onclick="selectPayment('cod')">
+                <input type="radio" name="payment_method" value="cod" class="form-check-input me-3" checked>
+                <div class="flex-grow-1">
+                  <h6 class="fw-semibold mb-1">Cash on Delivery (COD)</h6>
+                  <p class="small text-muted mb-0">Pay with cash upon delivery of your order.</p>
+                </div>
+                <i class="bi bi-truck fs-4 text-success"></i>
+              </label>
 
-<div class="d-flex justify-content-between mb-2">
-  <span>Shipping:</span>
-  <span>Free</span>
-</div>
-<hr>
-<div class="d-flex justify-content-between">
-  <strong>Total:</strong>
-  <h5 id="finalPrice" class="fw-bold text-success"
-      data-amount="{% if is_cart_checkout %}{{ subtotal }}{% else %}{{ product.sale_price|default:product.price }}{% endif %}">
-    {% if is_cart_checkout %}
-      ₹{{ subtotal }}
-    {% else %}
-      ₹{{ product.sale_price|default:product.price }}
-    {% endif %}
-  </h5>
-</div>
+              <!-- Debit/Credit Card -->
+              <label class="payment-option border rounded-3 p-3 mb-3 d-flex align-items-center"
+                onclick="selectPayment('card')">
+                <input type="radio" name="payment_method" value="card" class="form-check-input me-3">
+                <div class="flex-grow-1">
+                  <h6 class="fw-semibold mb-1">Credit / Debit Card</h6>
+                  <p class="small text-muted mb-0">Visa, MasterCard, or RuPay supported.</p>
+                </div>
+                <i class="bi bi-credit-card-2-front fs-4 text-danger"></i>
+              </label>
 
+              <div id="cardFields" class="bg-light border rounded-3 p-3 mb-3 d-none">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold">Card Number</label>
+                    <input type="text" class="form-control" placeholder="XXXX XXXX XXXX XXXX" maxlength="19">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small fw-semibold">Expiry Date</label>
+                    <input type="text" class="form-control" placeholder="MM/YY" maxlength="5">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small fw-semibold">CVV</label>
+                    <input type="password" class="form-control" placeholder="***" maxlength="3">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold">Cardholder Name</label>
+                    <input type="text" class="form-control" placeholder="John Doe">
+                  </div>
+                </div>
+              </div>
 
-    <div class="d-flex justify-content-between mb-2" id="coinDiscountRow" style="display: none;">
-      <span>SuperCoin Discount:</span>
-      <span class="text-danger fw-semibold" id="coinDiscount">-₹0</span>
-    </div>
+              <!-- UPI -->
+              <label class="payment-option border rounded-3 p-3 mb-3 d-flex align-items-center"
+                onclick="selectPayment('upi')">
+                <input type="radio" name="payment_method" value="upi" class="form-check-input me-3">
+                <div class="flex-grow-1">
+                  <h6 class="fw-semibold mb-1">UPI Payment</h6>
+                  <p class="small text-muted mb-0">Pay instantly using your UPI ID.</p>
+                </div>
+                <i class="bi bi-phone-vibrate fs-4 text-info"></i>
+              </label>
 
-    <div class="d-flex justify-content-between mb-2">
-      <span>Shipping:</span>
-      <span>Free</span>
-    </div>
-    <hr>
-
-    <div class="d-flex justify-content-between">
-      <strong>Total:</strong>
-      <h5 id="finalPrice"
-          class="fw-bold text-success"
-          data-amount="{{ product.sale_price|default:product.price }}">
-        ₹{{ product.sale_price|default:product.price }}
-      </h5>
-    </div>
-  </div>
-</div>
-
-
-        <!-- 💰 SuperCoin Section -->
-<div class="card mb-4 shadow-sm">
-  <div class="card-header bg-warning">
-    <strong>Use SuperCoins</strong>
-  </div>
-  <div class="card-body">
-    {% if user_coins > 0 %}
-      <p>You have <strong>{{ user_coins }}</strong> SuperCoins.</p>
-      <p>Each coin = ₹1 discount.</p>
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" id="useCoins" onchange="toggleCoins()">
-        <label class="form-check-label" for="useCoins">Redeem my SuperCoins</label>
+              <div id="upiField" class="bg-light border rounded-3 p-3 mb-3 d-none">
+                <label class="form-label small fw-semibold">Enter your UPI ID</label>
+                <input type="text" class="form-control" placeholder="example@upi">
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
-    {% else %}
-      <p class="text-muted">You have 0 SuperCoins. Earn 1 for every ₹100 spent.</p>
-    {% endif %}
+
+      <!-- RIGHT SIDE (Amazon-Style Floating Summary) -->
+<div class="col-lg-5">
+  <div class="sticky-summary">
+    <!-- Order Summary -->
+    <div class="card order-summary border shadow-sm rounded-3 mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">
+          <i class="bi bi-receipt"></i>Order Summary
+        </h6>
+
+        <div class="d-flex justify-content-between mb-2 small">
+          <span>Subtotal:</span>
+          <span id="subtotalAmount">
+            {% if is_cart_checkout %}
+            ₹{{ subtotal }}
+            {% else %}
+            ₹{{ product.sale_price|default:product.price }}
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="d-flex justify-content-between mb-2 small" id="coinDiscountRow" style="display:none;">
+          <span>SuperCoin Discount:</span>
+          <span class="text-danger fw-semibold" id="coinDiscount">-₹0</span>
+        </div>
+
+        <div class="d-flex justify-content-between mb-2 small">
+          <span>Shipping:</span>
+          <span class="text-success fw-semibold">Free</span>
+        </div>
+
+        <hr>
+        <div class="d-flex justify-content-between align-items-center">
+          <strong>Total:</strong>
+          <h4 id="finalPrice" class="fw-bold text-dark"
+              data-amount="{% if is_cart_checkout %}{{ subtotal }}{% else %}{{ product.sale_price|default:product.price }}{% endif %}">
+            {% if is_cart_checkout %}
+            ₹{{ subtotal }}
+            {% else %}
+            ₹{{ product.sale_price|default:product.price }}
+            {% endif %}
+          </h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- SuperCoins -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">
+          <i class="bi bi-coin text-warning me-2"></i>SuperCoins
+        </h6>
+        {% if user_coins > 0 %}
+        <p>You have <strong>{{ user_coins }}</strong> SuperCoins.</p>
+        <p class="small text-muted mb-2">Each coin = ₹1 discount</p>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" id="useCoins" onchange="toggleCoins()">
+          <label class="form-check-label fw-semibold" for="useCoins">Redeem my SuperCoins</label>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">You have 0 SuperCoins. Earn 1 coin for every ₹100 spent.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Pay Button -->
+    <form method="POST"
+      action="{% if is_cart_checkout %}{% url 'cart-demo-payment' %}{% else %}{% url 'demo-payment' product.id %}{% endif %}">
+      {% csrf_token %}
+      <input type="hidden" name="use_coins" id="useCoinsInput">
+      <button class="btn btn-warning w-100 py-3 fs-6 fw-semibold shadow-sm text-dark" onclick="setCoinsBeforeSubmit()">
+        <i class="bi bi-bag-check-fill me-2"></i>Place Order (Demo)
+      </button>
+    </form>
   </div>
 </div>
 
-        <!-- Pay Button -->
-        <form method="POST" action="{% if is_cart_checkout %}{% url 'cart-demo-payment' %}{% else %}{% url 'demo-payment' product.id %}{% endif %}">
-
-  {% csrf_token %}
-  <input type="hidden" name="use_coins" id="useCoinsInput">
-  <button class="btn btn-success w-100 py-2" onclick="setCoinsBeforeSubmit()">
-    💰 Pay Now (Demo)
-  </button>
-</form>
-      </div>
     </div>
   </div>
 </main>
 
+<!-- 🪄 STYLING -->
 <style>
-  @media (max-width: 768px) {
-    main .card {
-      margin-bottom: 1rem;
+  main {
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .card {
+    transition: all 0.2s ease-in-out;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+  }
+
+  .checkout-steps .step {
+    position: relative;
+    color: #999;
+    font-weight: 500;
+  }
+
+  .checkout-steps .step.active {
+    color: #0d6efd;
+  }
+
+  .checkout-steps .step.active::after {
+    content: "●";
+    font-size: 10px;
+    color: #0d6efd;
+    margin-left: 6px;
+  }
+
+  .border-bottom {
+    border-color: #e8e8e8 !important;
+  }
+
+  .btn-dark {
+    background: linear-gradient(90deg, #000 0%, #333 100%);
+    border: none;
+  }
+
+  .btn-dark:hover {
+    background: linear-gradient(90deg, #333 0%, #000 100%);
+  }
+
+  @media (max-width: 991px) {
+    .sticky-top {
+      position: static !important;
+    }
+  }
+
+  @media (min-width: 992px) {
+    .col-lg-5 .sticky-top {
+      position: sticky !important;
+      top: 90px !important;
+      align-self: flex-start;
+    }
+
+    .row.align-items-start {
+      display: flex;
+    }
+
+    .col-lg-7,
+    .col-lg-5 {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .payment-option {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .payment-option:hover {
+    background-color: #f8f9fa;
+    border-color: #0d6efd !important;
+  }
+
+  .payment-option input[type="radio"] {
+    transform: scale(1.2);
+  }
+
+  #cardFields,
+  #upiField {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 </style>
 
-
+<!-- ⚙️ JS -->
 <script>
-function toggleCoins() {
-  const checkbox = document.getElementById('useCoins');
-  const priceEl = document.getElementById('finalPrice');
-  const discountRow = document.getElementById('coinDiscountRow');
-  const discountEl = document.getElementById('coinDiscount');
-  const base = parseFloat(priceEl.dataset.amount);
-  const discount = {{ user_coins }};
-
-  if (checkbox.checked) {
-    const newTotal = Math.max(base - discount, 0);
-    priceEl.innerText = "₹" + newTotal.toFixed(2);
-    discountEl.innerText = "-₹" + discount.toFixed(2);
-    discountRow.style.display = "flex"; // Show row
-  } else {
-    // ✅ Reset total and hide discount
-    priceEl.innerText = "₹" + base.toFixed(2);
-    discountEl.innerText = "-₹0";
-    discountRow.style.display = "none";
+  function toggleCoins() {
+    const checkbox = document.getElementById('useCoins');
+    const priceEl = document.getElementById('finalPrice');
+    const discountRow = document.getElementById('coinDiscountRow');
+    const discountEl = document.getElementById('coinDiscount');
+    const base = parseFloat(priceEl.dataset.amount);
+    const discount = {{ user_coins }};
+    if (checkbox.checked) {
+      const newTotal = Math.max(base - discount, 0);
+      priceEl.innerText = "₹" + newTotal.toFixed(2);
+      discountEl.innerText = "-₹" + discount.toFixed(2);
+      discountRow.style.display = "flex";
+    } else {
+      priceEl.innerText = "₹" + base.toFixed(2);
+      discountEl.innerText = "-₹0";
+      discountRow.style.display = "none";
+    }
   }
-}
 
-function setCoinsBeforeSubmit() {
-  document.getElementById('useCoinsInput').value =
-    document.getElementById('useCoins').checked ? 'on' : 'off';
-}
+  function setCoinsBeforeSubmit() {
+    document.getElementById('useCoinsInput').value =
+      document.getElementById('useCoins').checked ? 'on' : 'off';
+  }
+
+  function selectPayment(method) {
+    const cardFields = document.getElementById("cardFields");
+    const upiField = document.getElementById("upiField");
+    cardFields.classList.add("d-none");
+    upiField.classList.add("d-none");
+    if (method === "card") {
+      cardFields.classList.remove("d-none");
+    } else if (method === "upi") {
+      upiField.classList.remove("d-none");
+    }
+  }
 </script>
-
 
 {% endblock %}

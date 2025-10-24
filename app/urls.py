@@ -16,7 +16,12 @@ urlpatterns = [
     path('category-products/', views.category_products, name='category-products'),
     path('cart/', views.cart, name='cart'),
     path('cart/checkout/', views.cart_checkout, name='cart-checkout'),
+    path('cart/demo-payment/', views.cart_demo_payment, name='cart-demo-payment'),
 
+    path('wishlist/', views.wishlist, name='wishlist'),
+    path("add-to-wishlist/<int:product_id>/", views.add_to_wishlist, name="add-to-wishlist"),
+    path("remove-from-wishlist/<int:product_id>/", views.remove_from_wishlist, name="remove-from-wishlist"),
+    
     
     # User URLs
     path('profile/', views.profile, name='profile'),  
